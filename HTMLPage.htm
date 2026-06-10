@@ -1,0 +1,1978 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TimeFlow — Quản Lý Thời Gian</title>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0f1e;
+            --bg2: #0f1629;
+            --bg3: #141d35;
+            --surface: #1a2540;
+            --surface2: #1f2d4a;
+            --border: rgba(99,140,255,0.12);
+            --border2: rgba(99,140,255,0.22);
+            --text: #e8eeff;
+            --text2: #8a9cc8;
+            --text3: #4a5880;
+            --accent: #638cff;
+            --accent2: #4a6fd4;
+            --accent-glow: rgba(99,140,255,0.18);
+            --green: #34d399;
+            --green-soft: rgba(52,211,153,0.12);
+            --red: #f87171;
+            --red-soft: rgba(248,113,113,0.12);
+            --yellow: #fbbf24;
+            --yellow-soft: rgba(251,191,36,0.12);
+            --purple: #a78bfa;
+            --purple-soft: rgba(167,139,250,0.12);
+            --orange: #fb923c;
+            --orange-soft: rgba(251,146,60,0.12);
+            --radius: 14px;
+            --radius-sm: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden
+        }
+
+        body {
+            font-family: 'Be Vietnam Pro',sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            height: 100dvh
+        }
+
+        /* HEADER */
+        .header {
+            flex-shrink: 0;
+            background: rgba(10,15,30,0.9);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 54px;
+            gap: 12px
+        }
+
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-weight: 800;
+            font-size: 17px;
+            letter-spacing: -0.5px
+        }
+
+        .logo-mark {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg,var(--accent),var(--purple));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px
+        }
+
+        .header-date {
+            font-size: 12px;
+            color: var(--text2);
+            font-family: 'JetBrains Mono',monospace;
+            font-weight: 400
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 6px
+        }
+
+        .hbtn {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text2);
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all .2s
+        }
+
+            .hbtn:active {
+                transform: scale(.93)
+            }
+
+            .hbtn.active {
+                background: var(--accent-glow);
+                border-color: var(--accent);
+                color: var(--accent)
+            }
+
+        /* TABS */
+        .tabs {
+            flex-shrink: 0;
+            display: flex;
+            padding: 10px 16px 0;
+            gap: 4px;
+            background: var(--bg)
+        }
+
+        .tab {
+            flex: 1;
+            padding: 8px 6px;
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            border: 1px solid transparent;
+            border-bottom: none;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text3);
+            cursor: pointer;
+            text-align: center;
+            transition: all .2s;
+            background: none;
+            font-family: inherit
+        }
+
+            .tab.active {
+                background: var(--surface);
+                border-color: var(--border);
+                color: var(--accent)
+            }
+
+            .tab .tab-icon {
+                font-size: 16px;
+                display: block;
+                margin-bottom: 2px
+            }
+
+        /* SCREENS */
+        .screens {
+            flex: 1;
+            overflow: hidden;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 0 0 0 0;
+            margin: 0 16px;
+            position: relative
+        }
+
+        .screen {
+            position: absolute;
+            inset: 0;
+            overflow-y: auto;
+            padding: 16px;
+            display: none
+        }
+
+            .screen.active {
+                display: block
+            }
+
+            .screen::-webkit-scrollbar {
+                width: 4px
+            }
+
+            .screen::-webkit-scrollbar-thumb {
+                background: var(--border2);
+                border-radius: 2px
+            }
+
+        /* BOTTOM PADDING */
+        .bottom-space {
+            height: 70px
+        }
+
+        /* FLOATING ADD */
+        .fab {
+            position: fixed;
+            bottom: calc(env(safe-area-inset-bottom,0px)+14px);
+            right: 18px;
+            z-index: 50;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg,var(--accent),var(--purple));
+            border: none;
+            color: #fff;
+            font-size: 22px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(99,140,255,0.5);
+            transition: all .2s;
+            display: flex;
+            align-items: center;
+            justify-content: center
+        }
+
+            .fab:active {
+                transform: scale(.92)
+            }
+
+        /* SECTION HEADS */
+        .sec-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            margin-top: 18px
+        }
+
+            .sec-head:first-child {
+                margin-top: 0
+            }
+
+        .sec-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text2);
+            text-transform: uppercase;
+            letter-spacing: .8px
+        }
+
+        .sec-count {
+            font-size: 11px;
+            color: var(--text3);
+            background: var(--surface2);
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-family: 'JetBrains Mono',monospace
+        }
+
+        /* PROGRESS BAR */
+        .day-progress {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px 16px;
+            margin-bottom: 16px
+        }
+
+        .dp-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px
+        }
+
+        .dp-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text)
+        }
+
+        .dp-pct {
+            font-size: 14px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono',monospace;
+            color: var(--accent)
+        }
+
+        .dp-bar {
+            height: 8px;
+            background: var(--bg3);
+            border-radius: 4px;
+            overflow: hidden
+        }
+
+        .dp-fill {
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(90deg,var(--accent),var(--purple));
+            transition: width .6s cubic-bezier(.4,0,.2,1)
+        }
+
+        .dp-time {
+            font-size: 11px;
+            color: var(--text3);
+            margin-top: 8px;
+            display: flex;
+            justify-content: space-between
+        }
+
+        /* TASK CARDS */
+        .task-card {
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 14px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: flex-start;
+            gap: 11px;
+            cursor: pointer;
+            transition: all .2s;
+            position: relative;
+            overflow: hidden
+        }
+
+            .task-card::before {
+                content: '';
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 3px;
+                border-radius: 2px 0 0 2px
+            }
+
+            .task-card.cat-work::before {
+                background: var(--accent)
+            }
+
+            .task-card.cat-personal::before {
+                background: var(--green)
+            }
+
+            .task-card.cat-health::before {
+                background: var(--red)
+            }
+
+            .task-card.cat-study::before {
+                background: var(--purple)
+            }
+
+            .task-card.cat-other::before {
+                background: var(--yellow)
+            }
+
+            .task-card:active {
+                transform: scale(.98)
+            }
+
+            .task-card.done {
+                opacity: .5
+            }
+
+        .task-check {
+            width: 20px;
+            height: 20px;
+            min-width: 20px;
+            border-radius: 6px;
+            border: 2px solid var(--border2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            margin-top: 1px;
+            transition: all .2s;
+            cursor: pointer
+        }
+
+        .task-card.done .task-check {
+            background: var(--green);
+            border-color: var(--green);
+            color: #fff
+        }
+
+        .task-body {
+            flex: 1;
+            min-width: 0
+        }
+
+        .task-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            line-height: 1.35
+        }
+
+        .task-card.done .task-title {
+            text-decoration: line-through;
+            color: var(--text3)
+        }
+
+        .task-meta {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 5px;
+            align-items: center
+        }
+
+        .task-time {
+            font-size: 11px;
+            color: var(--text2);
+            font-family: 'JetBrains Mono',monospace;
+            display: flex;
+            align-items: center;
+            gap: 3px
+        }
+
+        .task-tag {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 20px
+        }
+
+            .task-tag.work {
+                background: var(--accent-glow);
+                color: var(--accent)
+            }
+
+            .task-tag.personal {
+                background: var(--green-soft);
+                color: var(--green)
+            }
+
+            .task-tag.health {
+                background: var(--red-soft);
+                color: var(--red)
+            }
+
+            .task-tag.study {
+                background: var(--purple-soft);
+                color: var(--purple)
+            }
+
+            .task-tag.other {
+                background: var(--yellow-soft);
+                color: var(--yellow)
+            }
+
+        .task-pri {
+            font-size: 11px
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 6px;
+            align-items: flex-start
+        }
+
+        .task-del {
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            background: none;
+            border: none;
+            color: var(--text3);
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all .2s
+        }
+
+            .task-del:active {
+                color: var(--red);
+                background: var(--red-soft)
+            }
+
+        /* EMPTY */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text3)
+        }
+
+        .empty-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+            opacity: .4
+        }
+
+        .empty-text {
+            font-size: 13px;
+            line-height: 1.6
+        }
+
+        /* TIME BLOCKS */
+        .time-block-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px
+        }
+
+        .time-block {
+            display: flex;
+            gap: 10px;
+            align-items: stretch
+        }
+
+        .tb-time-col {
+            width: 52px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            padding-top: 4px
+        }
+
+        .tb-hour {
+            font-size: 11px;
+            color: var(--text3);
+            font-family: 'JetBrains Mono',monospace;
+            font-weight: 600
+        }
+
+        .tb-line {
+            flex: 1;
+            width: 1px;
+            background: var(--border);
+            margin: 4px 0;
+            margin-right: 0;
+            align-self: stretch
+        }
+
+        .tb-content {
+            flex: 1;
+            min-height: 40px;
+            border-radius: var(--radius-sm);
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            padding: 8px 10px;
+            font-size: 12px;
+            color: var(--text3);
+            cursor: pointer;
+            transition: all .2s;
+            display: flex;
+            align-items: center
+        }
+
+            .tb-content.has-task {
+                background: var(--bg3);
+                border-color: var(--border2);
+                color: var(--text)
+            }
+
+            .tb-content.current-hour {
+                border-color: var(--accent);
+                background: var(--accent-glow)
+            }
+
+        .tb-task-name {
+            font-weight: 600;
+            font-size: 13px
+        }
+
+        .tb-task-sub {
+            font-size: 11px;
+            color: var(--text2);
+            margin-top: 2px
+        }
+
+        /* CALENDAR */
+        .cal-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px
+        }
+
+        .cal-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--text)
+        }
+
+        .cal-nav-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text2);
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center
+        }
+
+        .cal-weekdays {
+            display: grid;
+            grid-template-columns: repeat(7,1fr);
+            gap: 4px;
+            margin-bottom: 6px
+        }
+
+        .cal-wd {
+            text-align: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            padding: 4px 0
+        }
+
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7,1fr);
+            gap: 4px
+        }
+
+        .cal-day {
+            aspect-ratio: 1;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all .2s;
+            position: relative;
+            background: var(--surface2)
+        }
+
+            .cal-day:active {
+                transform: scale(.92)
+            }
+
+            .cal-day.other-month {
+                opacity: .3;
+                pointer-events: none
+            }
+
+            .cal-day.today {
+                border-color: var(--accent);
+                color: var(--accent);
+                font-weight: 800;
+                background: var(--accent-glow)
+            }
+
+            .cal-day.selected {
+                background: var(--accent);
+                color: #fff;
+                border-color: var(--accent)
+            }
+
+            .cal-day.has-tasks::after {
+                content: '';
+                width: 4px;
+                height: 4px;
+                border-radius: 50%;
+                background: var(--green);
+                position: absolute;
+                bottom: 4px
+            }
+
+            .cal-day.selected::after {
+                background: #fff
+            }
+
+            .cal-day.weekend {
+                color: var(--red)
+            }
+
+            .cal-day.today.weekend {
+                color: var(--accent)
+            }
+
+        .cal-selected-tasks {
+            margin-top: 16px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px
+        }
+
+        .cst-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text2);
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            margin-bottom: 10px
+        }
+
+        /* YEAR VIEW */
+        .year-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px
+        }
+
+        .month-mini {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px;
+            cursor: pointer;
+            transition: all .2s
+        }
+
+            .month-mini:active {
+                transform: scale(.97)
+            }
+
+            .month-mini.current-month {
+                border-color: var(--accent);
+                background: var(--accent-glow)
+            }
+
+        .mm-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center
+        }
+
+        .mm-count {
+            font-size: 10px;
+            color: var(--text3);
+            font-family: 'JetBrains Mono',monospace
+        }
+
+        .mm-grid {
+            display: grid;
+            grid-template-columns: repeat(7,1fr);
+            gap: 2px
+        }
+
+        .mm-day {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 3px;
+            background: var(--bg3);
+            font-size: 0
+        }
+
+            .mm-day.mm-today {
+                background: var(--accent)
+            }
+
+            .mm-day.mm-has {
+                background: var(--purple-soft);
+                border: 1px solid var(--purple)
+            }
+
+            .mm-day.mm-other {
+                opacity: .2
+            }
+
+        /* STATS */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 16px
+        }
+
+        .stat-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px
+        }
+
+        .stat-val {
+            font-size: 28px;
+            font-weight: 800;
+            font-family: 'JetBrains Mono',monospace;
+            margin-bottom: 3px
+        }
+
+            .stat-val.accent {
+                color: var(--accent)
+            }
+
+            .stat-val.green {
+                color: var(--green)
+            }
+
+            .stat-val.red {
+                color: var(--red)
+            }
+
+            .stat-val.purple {
+                color: var(--purple)
+            }
+
+        .stat-lbl {
+            font-size: 11px;
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            font-weight: 600
+        }
+
+        .weekly-chart {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px;
+            margin-bottom: 14px
+        }
+
+        .wc-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text2);
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            margin-bottom: 12px
+        }
+
+        .wc-bars {
+            display: flex;
+            gap: 6px;
+            align-items: flex-end;
+            height: 80px
+        }
+
+        .wc-bar-wrap {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            height: 100%
+        }
+
+        .wc-bar-bg {
+            flex: 1;
+            width: 100%;
+            background: var(--bg3);
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end
+        }
+
+        .wc-bar-fill {
+            width: 100%;
+            border-radius: 4px;
+            background: linear-gradient(180deg,var(--accent),var(--purple));
+            transition: height .6s cubic-bezier(.4,0,.2,1);
+            min-height: 3px
+        }
+
+            .wc-bar-fill.today-bar {
+                background: linear-gradient(180deg,var(--green),var(--accent))
+            }
+
+        .wc-label {
+            font-size: 9px;
+            color: var(--text3);
+            font-weight: 600;
+            font-family: 'JetBrains Mono',monospace
+        }
+
+        .cat-breakdown {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px
+        }
+
+        .cb-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px
+        }
+
+            .cb-row:last-child {
+                margin-bottom: 0
+            }
+
+        .cb-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+            flex-shrink: 0
+        }
+
+        .cb-label {
+            flex: 1;
+            font-size: 12px;
+            color: var(--text2)
+        }
+
+        .cb-bar-bg {
+            flex: 2;
+            height: 6px;
+            background: var(--bg3);
+            border-radius: 3px;
+            overflow: hidden
+        }
+
+        .cb-bar-fill {
+            height: 6px;
+            border-radius: 3px;
+            transition: width .6s
+        }
+
+        .cb-num {
+            font-size: 11px;
+            color: var(--text3);
+            font-family: 'JetBrains Mono',monospace;
+            width: 20px;
+            text-align: right
+        }
+
+        /* MODAL */
+        .overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: rgba(0,0,0,.65);
+            backdrop-filter: blur(6px);
+            display: flex;
+            align-items: flex-end;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .3s
+        }
+
+            .overlay.open {
+                opacity: 1;
+                pointer-events: all
+            }
+
+        .sheet {
+            background: var(--bg2);
+            border: 1px solid var(--border2);
+            border-radius: 18px 18px 0 0;
+            padding: 0 18px calc(env(safe-area-inset-bottom,0px)+20px);
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: translateY(100%);
+            transition: transform .35s cubic-bezier(.34,1.56,.64,1)
+        }
+
+            .sheet::-webkit-scrollbar {
+                display: none
+            }
+
+        .overlay.open .sheet {
+            transform: translateY(0)
+        }
+
+        .sheet-handle {
+            width: 36px;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--border2);
+            margin: 12px auto 18px
+        }
+
+        .sheet-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--text);
+            margin-bottom: 18px
+        }
+
+        .form-group {
+            margin-bottom: 14px
+        }
+
+        .form-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: .7px;
+            margin-bottom: 7px;
+            display: block
+        }
+
+        .form-input {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 11px 13px;
+            font-size: 14px;
+            color: var(--text);
+            outline: none;
+            transition: border .2s;
+            font-family: inherit
+        }
+
+            .form-input:focus {
+                border-color: var(--accent)
+            }
+
+            .form-input::placeholder {
+                color: var(--text3)
+            }
+
+        .form-textarea {
+            resize: none;
+            min-height: 80px;
+            line-height: 1.5
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px
+        }
+
+        .cat-select {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap
+        }
+
+        .cat-opt {
+            padding: 6px 13px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1.5px solid transparent;
+            transition: all .2s;
+            background: var(--surface)
+        }
+
+            .cat-opt.sel-work {
+                border-color: var(--accent);
+                background: var(--accent-glow);
+                color: var(--accent)
+            }
+
+            .cat-opt.sel-personal {
+                border-color: var(--green);
+                background: var(--green-soft);
+                color: var(--green)
+            }
+
+            .cat-opt.sel-health {
+                border-color: var(--red);
+                background: var(--red-soft);
+                color: var(--red)
+            }
+
+            .cat-opt.sel-study {
+                border-color: var(--purple);
+                background: var(--purple-soft);
+                color: var(--purple)
+            }
+
+            .cat-opt.sel-other {
+                border-color: var(--yellow);
+                background: var(--yellow-soft);
+                color: var(--yellow)
+            }
+
+        .pri-select {
+            display: flex;
+            gap: 6px
+        }
+
+        .pri-opt {
+            flex: 1;
+            padding: 7px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            border: 1.5px solid var(--border);
+            text-align: center;
+            transition: all .2s;
+            background: var(--surface);
+            color: var(--text2)
+        }
+
+            .pri-opt.sel {
+                background: var(--accent-glow);
+                border-color: var(--accent);
+                color: var(--accent)
+            }
+
+                .pri-opt.sel.p-high {
+                    background: var(--red-soft);
+                    border-color: var(--red);
+                    color: var(--red)
+                }
+
+                .pri-opt.sel.p-med {
+                    background: var(--yellow-soft);
+                    border-color: var(--yellow);
+                    color: var(--yellow)
+                }
+
+                .pri-opt.sel.p-low {
+                    background: var(--green-soft);
+                    border-color: var(--green);
+                    color: var(--green)
+                }
+
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: var(--radius);
+            background: linear-gradient(135deg,var(--accent),var(--purple));
+            border: none;
+            font-size: 15px;
+            font-weight: 700;
+            color: #fff;
+            cursor: pointer;
+            transition: all .2s;
+            font-family: inherit;
+            margin-top: 4px
+        }
+
+            .submit-btn:active {
+                transform: scale(.97)
+            }
+
+        .recurring-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap
+        }
+
+        .rec-opt {
+            padding: 5px 11px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            color: var(--text3);
+            transition: all .2s;
+            background: var(--surface)
+        }
+
+            .rec-opt.sel {
+                border-color: var(--purple);
+                background: var(--purple-soft);
+                color: var(--purple)
+            }
+
+        /* FOCUS TIMER */
+        .focus-wrap {
+            text-align: center;
+            padding: 24px 0 16px
+        }
+
+        .focus-ring-wrap {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 18px
+        }
+
+        .focus-ring {
+            transform: rotate(-90deg)
+        }
+
+        .focus-ring-bg {
+            fill: none;
+            stroke: var(--surface2);
+            stroke-width: 10
+        }
+
+        .focus-ring-fill {
+            fill: none;
+            stroke: url(#focusGrad);
+            stroke-width: 10;
+            stroke-linecap: round;
+            transition: stroke-dashoffset .5s linear
+        }
+
+        .focus-time {
+            position: absolute;
+            font-size: 32px;
+            font-weight: 800;
+            font-family: 'JetBrains Mono',monospace;
+            color: var(--text)
+        }
+
+        .focus-label {
+            position: absolute;
+            bottom: -8px;
+            font-size: 10px;
+            color: var(--text3);
+            font-weight: 600;
+            letter-spacing: .5px
+        }
+
+        .focus-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px
+        }
+
+        .focus-btn {
+            padding: 10px 24px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all .2s
+        }
+
+            .focus-btn.start {
+                background: linear-gradient(135deg,var(--accent),var(--purple));
+                color: #fff
+            }
+
+            .focus-btn.stop {
+                background: var(--surface2);
+                border: 1px solid var(--border);
+                color: var(--text2)
+            }
+
+            .focus-btn:active {
+                transform: scale(.95)
+            }
+
+        .focus-presets {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap
+        }
+
+        .focus-preset {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text2);
+            cursor: pointer;
+            transition: all .2s
+        }
+
+            .focus-preset.sel {
+                background: var(--accent-glow);
+                border-color: var(--accent);
+                color: var(--accent)
+            }
+
+            .focus-preset:active {
+                transform: scale(.95)
+            }
+
+        .focus-task-display {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 16px;
+            text-align: left;
+            margin-bottom: 16px
+        }
+
+        .ftd-label {
+            font-size: 10px;
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            font-weight: 700;
+            margin-bottom: 4px
+        }
+
+        .ftd-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text)
+        }
+    </style>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-logo">
+            <div class="logo-mark">⏱</div>
+            TimeFlow
+        </div>
+        <div class="header-date" id="headerDate">--:-- | Thứ --</div>
+        <div class="header-actions">
+            <button class="hbtn" onclick="openFocusTimer()" title="Pomodoro">🎯</button>
+            <button class="hbtn" onclick="openAdd()" title="Thêm task">＋</button>
+        </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+        <button class="tab active" onclick="goTab(0)" id="tab0"><span class="tab-icon">📋</span>Hôm nay</button>
+        <button class="tab" onclick="goTab(1)" id="tab1"><span class="tab-icon">📅</span>Tháng</button>
+        <button class="tab" onclick="goTab(2)" id="tab2"><span class="tab-icon">🗓</span>Năm</button>
+        <button class="tab" onclick="goTab(3)" id="tab3"><span class="tab-icon">📊</span>Thống kê</button>
+    </div>
+
+    <!-- SCREENS -->
+    <div class="screens">
+
+        <!-- TODAY -->
+        <div class="screen active" id="screen0">
+            <div class="day-progress" id="dayProgress">
+                <div class="dp-header">
+                    <div class="dp-label">Tiến độ hôm nay</div>
+                    <div class="dp-pct" id="dayPct">0%</div>
+                </div>
+                <div class="dp-bar"><div class="dp-fill" id="dayFill" style="width:0%"></div></div>
+                <div class="dp-time">
+                    <span id="dpTimeLeft">Còn lại: 0 task</span>
+                    <span id="dpDone">Hoàn thành: 0</span>
+                </div>
+            </div>
+
+            <!-- Time blocks -->
+            <div class="sec-head">
+                <div class="sec-title">Lịch theo giờ</div>
+                <div class="sec-count" id="timeBlockCount">0 task</div>
+            </div>
+            <div class="time-block-list" id="timeBlockList"></div>
+
+            <!-- Task list -->
+            <div class="sec-head" style="margin-top:20px">
+                <div class="sec-title">Tất cả task hôm nay</div>
+                <div class="sec-count" id="todayCount">0</div>
+            </div>
+            <div id="todayList"></div>
+
+            <div class="bottom-space"></div>
+        </div>
+
+        <!-- MONTH -->
+        <div class="screen" id="screen1">
+            <div class="cal-nav">
+                <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
+                <div class="cal-title" id="calTitle">Tháng 1, 2025</div>
+                <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
+            </div>
+            <div class="cal-weekdays">
+                <div class="cal-wd">CN</div><div class="cal-wd">T2</div><div class="cal-wd">T3</div>
+                <div class="cal-wd">T4</div><div class="cal-wd">T5</div><div class="cal-wd">T6</div>
+                <div class="cal-wd">T7</div>
+            </div>
+            <div class="cal-grid" id="calGrid"></div>
+
+            <div class="cal-selected-tasks" id="calSelectedTasks">
+                <div class="cst-title" id="cstTitle">Chọn ngày để xem</div>
+                <div id="cstList"><div class="empty-state"><div class="empty-icon">??</div><div class="empty-text">Nhấn vào một ngày</div></div></div>
+            </div>
+            <div class="bottom-space"></div>
+        </div>
+
+        <!-- YEAR -->
+        <div class="screen" id="screen2">
+            <div class="cal-nav" style="margin-bottom:16px">
+                <button class="cal-nav-btn" onclick="changeYear(-1)">‹</button>
+                <div class="cal-title" id="yearTitle">2025</div>
+                <button class="cal-nav-btn" onclick="changeYear(1)">›</button>
+            </div>
+            <div class="year-grid" id="yearGrid"></div>
+            <div class="bottom-space"></div>
+        </div>
+
+        <!-- STATS -->
+        <div class="screen" id="screen3">
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-val accent" id="statTotal">0</div><div class="stat-lbl">Tổng task</div></div>
+                <div class="stat-card"><div class="stat-val green" id="statDone">0</div><div class="stat-lbl">Hoàn thành</div></div>
+                <div class="stat-card"><div class="stat-val red" id="statPending">0</div><div class="stat-lbl">Chýa xong</div></div>
+                <div class="stat-card"><div class="stat-val purple" id="statRate">0%</div><div class="stat-lbl">Tỉ lệ hoàn thành</div></div>
+            </div>
+            <div class="weekly-chart">
+                <div class="wc-title">7 ngày gần nhất</div>
+                <div class="wc-bars" id="weeklyBars"></div>
+            </div>
+            <div class="cat-breakdown">
+                <div class="wc-title" style="margin-bottom:12px">Theo danh mục</div>
+                <div id="catBreakdown"></div>
+            </div>
+            <div class="bottom-space"></div>
+        </div>
+
+    </div><!-- /screens -->
+    <!-- FAB -->
+    <button class="fab" onclick="openAdd()">＋</button>
+
+    <!-- ADD TASK OVERLAY -->
+    <div class="overlay" id="ovAdd" onclick="if(event.target===this)closeOverlay('ovAdd')">
+        <div class="sheet">
+            <div class="sheet-handle"></div>
+            <div class="sheet-title">Thêm task mới</div>
+
+            <div class="form-group">
+                <label class="form-label">Tiêu đề *</label>
+                <input class="form-input" id="fTitle" placeholder="Tên công việc..." type="text">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Ghi chú</label>
+                <textarea class="form-input form-textarea" id="fNote" placeholder="Mô tả thêm..."></textarea>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Ngày</label>
+                    <input class="form-input" id="fDate" type="date">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Giờ</label>
+                    <input class="form-input" id="fTime" type="time">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Thời lượng (phút)</label>
+                    <input class="form-input" id="fDuration" type="number" min="5" step="5" placeholder="60">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Hạn chót</label>
+                    <input class="form-input" id="fDeadline" type="date">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Danh mục</label>
+                <div class="cat-select" id="catSelect">
+                    <div class="cat-opt sel-work" data-cat="work" onclick="pickCat(this)">💼 Công việc</div>
+                    <div class="cat-opt" data-cat="personal" onclick="pickCat(this)">🏠 Cá nhân</div>
+                    <div class="cat-opt" data-cat="health" onclick="pickCat(this)">💪 Sức khỏe</div>
+                    <div class="cat-opt" data-cat="study" onclick="pickCat(this)">📚 Học tập</div>
+                    <div class="cat-opt" data-cat="other" onclick="pickCat(this)">⭐ Khác</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Ýu tiên</label>
+                <div class="pri-select" id="priSelect">
+                    <div class="pri-opt p-high" data-pri="high" onclick="pickPri(this)">🔴 Cao</div>
+                    <div class="pri-opt sel p-med" data-pri="med" onclick="pickPri(this)">🟡 Vừa</div>
+                    <div class="pri-opt p-low" data-pri="low" onclick="pickPri(this)">🟢 Thấp</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Lặp lại</label>
+                <div class="recurring-row" id="recurringRow">
+                    <div class="rec-opt" data-rec="none" onclick="pickRec(this)">Không</div>
+                    <div class="rec-opt" data-rec="daily" onclick="pickRec(this)">Hàng ngày</div>
+                    <div class="rec-opt" data-rec="weekly" onclick="pickRec(this)">Hàng tuần</div>
+                    <div class="rec-opt" data-rec="monthly" onclick="pickRec(this)">Hàng tháng</div>
+                </div>
+            </div>
+
+            <button class="submit-btn" onclick="saveTask()">? Lýu task</button>
+        </div>
+    </div>
+
+    <!-- FOCUS TIMER OVERLAY -->
+    <div class="overlay" id="ovFocus" onclick="if(event.target===this)closeOverlay('ovFocus')">
+        <div class="sheet">
+            <div class="sheet-handle"></div>
+            <div class="sheet-title">🎯 Focus Timer</div>
+
+            <div class="focus-task-display">
+                <div class="ftd-label">Task ðang làm</div>
+                <div class="ftd-name" id="focusTaskName">Không có task — chọn từ danh sách</div>
+            </div>
+
+            <div class="focus-wrap">
+                <div class="focus-ring-wrap">
+                    <svg class="focus-ring" width="160" height="160" viewBox="0 0 160 160">
+                        <defs>
+                            <linearGradient id="focusGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#638cff" />
+                                <stop offset="100%" style="stop-color:#a78bfa" />
+                            </linearGradient>
+                        </defs>
+                        <circle class="focus-ring-bg" cx="80" cy="80" r="70" />
+                        <circle class="focus-ring-fill" id="focusRing" cx="80" cy="80" r="70"
+                                stroke-dasharray="439.8" stroke-dashoffset="0" />
+                    </svg>
+                    <div class="focus-time" id="focusTimeDisplay">25:00</div>
+                    <div class="focus-label" id="focusPhaseLabel">FOCUS</div>
+                </div>
+                <div class="focus-controls">
+                    <button class="focus-btn start" id="focusStartBtn" onclick="toggleFocus()">▶ Bắt đầu</button>
+                    <button class="focus-btn stop" onclick="resetFocus()">↺ Đặt lại</button>
+                </div>
+                <div class="focus-presets">
+                    <div class="focus-preset sel" data-min="25" onclick="setFocusPreset(this)">25 phút</div>
+                    <div class="focus-preset" data-min="50" onclick="setFocusPreset(this)">50 phút</div>
+                    <div class="focus-preset" data-min="90" onclick="setFocusPreset(this)">90 phút</div>
+                    <div class="focus-preset" data-min="15" onclick="setFocusPreset(this)">15 phút</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ?? STORAGE ??
+        let tasks = JSON.parse(localStorage.getItem('tf_tasks') || '[]');
+        let selCat = 'work', selPri = 'med', selRec = 'none';
+        let calViewDate = new Date();
+        let yearView = new Date().getFullYear();
+        let selectedCalDay = null;
+        let focusInterval = null, focusTotal = 25*60, focusLeft = 25*60, focusRunning = false;
+        let currentTab = 0;
+
+        // ?? SEED ??
+        if (!tasks.length) {
+        const today = new Date().toISOString().split('T')[0];
+        tasks = [
+        {id:1,title:'Kiểm tra email buổi sáng',note:'',date:today,time:'08:00',duration:30,deadline:'',cat:'work',pri:'high',rec:'none',done:false,ts:Date.now()},
+        {id:2,title:'Tập thể dục',note:'Chạy bộ 30 phút',date:today,time:'07:00',duration:45,deadline:'',cat:'health',pri:'med',rec:'daily',done:true,ts:Date.now()},
+        {id:3,title:'Đọc sách 30 phút',note:'',date:today,time:'21:00',duration:30,deadline:'',cat:'study',pri:'low',rec:'daily',done:false,ts:Date.now()},
+        {id:4,title:'Họp team dự án',note:'Phòng họp B2',date:today,time:'10:00',duration:60,deadline:'',cat:'work',pri:'high',rec:'none',done:false,ts:Date.now()},
+        {id:5,title:'Nấu ăn tối',note:'',date:today,time:'18:00',duration:45,deadline:'',cat:'personal',pri:'med',rec:'daily',done:false,ts:Date.now()},
+        ];
+        // Add some tasks for other days
+        const d1 = new Date(); d1.setDate(d1.getDate()-1);
+        const d2 = new Date(); d2.setDate(d2.getDate()+1);
+        const d3 = new Date(); d3.setDate(d3.getDate()+2);
+        [d1,d2,d3].forEach((d,i) => {
+        tasks.push({id:10+i,title:`Task ngày ${d.getDate()}/${d.getMonth()+1}`,note:'',date:d.toISOString().split('T')[0],time:'09:00',duration:60,deadline:'',cat:['work','personal','study'][i],pri:'med',rec:'none',done:i===0,ts:Date.now()});
+        });
+        save();
+        }
+
+        function save(){localStorage.setItem('tf_tasks',JSON.stringify(tasks));}
+        function todayStr(){return new Date().toISOString().split('T')[0];}
+        function getTodayTasks(){return tasks.filter(t=>t.date===todayStr()).sort((a,b)=>a.time.localeCompare(b.time));}
+        function getTasksForDate(d){return tasks.filter(t=>t.date===d);}
+
+        // ?? CLOCK ??
+        function updateClock(){
+        const now = new Date();
+        const days = ['Chủ Nhật','Thứ Hai','Thứ Ba','Th? Tý','Th? Nãm','Thứ Sáu','Thứ Bảy'];
+        const hh = String(now.getHours()).padStart(2,'0');
+        const mm = String(now.getMinutes()).padStart(2,'0');
+        document.getElementById('headerDate').textContent = `${hh}:${mm} | ${days[now.getDay()]}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // ?? TABS ??
+        function goTab(i) {
+        currentTab = i;
+        document.querySelectorAll('.screen').forEach((s,idx)=>s.classList.toggle('active',idx===i));
+        document.querySelectorAll('.tab').forEach((t,idx)=>t.classList.toggle('active',idx===i));
+        if(i===0) renderToday();
+        if(i===1) renderMonth();
+        if(i===2) renderYear();
+        if(i===3) renderStats();
+        }
+
+        // ?? TODAY ??
+        function renderToday() {
+        const today = getTodayTasks();
+        const done = today.filter(t=>t.done).length;
+        const pct = today.length ? Math.round(done/today.length*100) : 0;
+        document.getElementById('dayPct').textContent = pct+'%';
+        document.getElementById('dayFill').style.width = pct+'%';
+        document.getElementById('dpDone').textContent = `Hoàn thành: ${done}`;
+        document.getElementById('dpTimeLeft').textContent = `Còn lại: ${today.length-done} task`;
+        document.getElementById('todayCount').textContent = today.length;
+
+        // Time blocks
+        renderTimeBlocks(today);
+
+        // Task list
+        const list = document.getElementById('todayList');
+        if (!today.length) {
+        list.innerHTML = '<div class="empty-state"><div class="empty-icon">?</div><div class="empty-text">Không có task nào hôm nay.<br>Nhấn + để thêm task mới!</div></div>';
+        return;
+        }
+        list.innerHTML = '';
+        today.forEach(t => list.appendChild(makeTaskCard(t)));
+        }
+
+        function renderTimeBlocks(today) {
+        const now = new Date();
+        const curH = now.getHours();
+        const list = document.getElementById('timeBlockList');
+        const hours = [6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22];
+        const taskMap = {};
+        today.forEach(t => {
+        if (t.time) {
+        const h = parseInt(t.time.split(':')[0]);
+        if (!taskMap[h]) taskMap[h] = [];
+        taskMap[h].push(t);
+        }
+        });
+
+        let count = 0;
+        let html = '';
+        hours.forEach(h => {
+        const isCur = h === curH;
+        const hTasks = taskMap[h] || [];
+        count += hTasks.length;
+        const hStr = String(h).padStart(2,'0') + ':00';
+        if (hTasks.length) {
+        hTasks.forEach(t => {
+        html += `<div class="time-block">
+        <div class="tb-time-col"><div class="tb-hour">${hStr}</div></div>
+        <div class="tb-content has-task ${isCur?'current-hour':''}" onclick="toggleDone(${t.id})">
+        <div>
+        <div class="tb-task-name">${t.done?'✓ ':''}<span style="${t.done?'text-decoration:line-through;opacity:.5':''}">${t.title}</span></div>
+        <div class="tb-task-sub">${t.duration?t.duration+' phút':''} · ${getCatLabel(t.cat)}</div>
+        </div>
+        </div>
+        </div>`;
+        });
+        } else {
+        html += `<div class="time-block">
+        <div class="tb-time-col"><div class="tb-hour">${hStr}</div></div>
+        <div class="tb-content ${isCur?'current-hour':''}" onclick="openAddAtHour(${h})" style="color:var(--text3);font-size:12px">${isCur?'⬤ Bây giờ':''}</div>
+        </div>`;
+        }
+        });
+        list.innerHTML = html;
+        document.getElementById('timeBlockCount').textContent = count + ' task';
+        }
+
+        function makeTaskCard(t) {
+        const div = document.createElement('div');
+        div.className = `task-card cat-${t.cat}${t.done?' done':''}`;
+        const priIcon = t.pri==='high'?'🔴':t.pri==='med'?'🟡':'🟢';
+        const recIcon = t.rec!=='none'?'🔁':'';
+        div.innerHTML = `
+        <div class="task-check" onclick="event.stopPropagation();toggleDone(${t.id})">${t.done?'✓':''}</div>
+        <div class="task-body">
+        <div class="task-title">${t.title}</div>
+        <div class="task-meta">
+        ${t.time?`<span class="task-time">📅 ${t.time}${t.duration?' ('+t.duration+'p)':''}</span>`:''}
+        <span class="task-tag ${t.cat}">${getCatLabel(t.cat)}</span>
+        <span class="task-pri">${priIcon}</span>
+        ${recIcon?`<span class="task-pri">${recIcon}</span>`:''}
+        ${t.deadline?`<span class="task-time">⏰ ${t.deadline}</span>`:''}
+        </div>
+        ${t.note?`<div style="font-size:11px;color:var(--text3);margin-top:4px">${t.note}</div>`:''}
+        </div>
+        <div class="task-actions">
+        <button class="task-del" onclick="event.stopPropagation();deleteTask(${t.id})">??</button>
+        </div>`;
+        return div;
+        }
+
+        function getCatLabel(cat) {
+        return {work:'💼 Công việc',personal:'🏠 Cá nhân',health:'💪 Sức khỏe',study:'📚 Học tập',other:'⭐ Khác'}[cat]||cat;
+        }
+
+        function toggleDone(id) {
+        const t = tasks.find(x=>x.id===id);
+        if (t) { t.done = !t.done; save(); renderToday(); }
+        }
+
+        function deleteTask(id) {
+        tasks = tasks.filter(x=>x.id!==id);
+        save();
+        if(currentTab===0) renderToday();
+        if(currentTab===1) renderMonth();
+        if(currentTab===3) renderStats();
+        }
+
+        function openAddAtHour(h) {
+        openAdd();
+        document.getElementById('fTime').value = String(h).padStart(2,'0')+':00';
+        }
+
+        // ?? MONTH ??
+        function renderMonth() {
+        const y = calViewDate.getFullYear();
+        const m = calViewDate.getMonth();
+        const months = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+        document.getElementById('calTitle').textContent = `${months[m]}, ${y}`;
+
+        const first = new Date(y,m,1).getDay();
+        const days = new Date(y,m+1,0).getDate();
+        const prevDays = new Date(y,m,0).getDate();
+        const today = new Date();
+
+        let html = '';
+        // prev month
+        for (let i=first-1;i>=0;i--) {
+        html += `<div class="cal-day other-month">${prevDays-i}</div>`;
+        }
+        // current month
+        const taskDates = new Set(tasks.map(t=>t.date));
+        for (let d=1;d<=days;d++) {
+        const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const isToday = today.getFullYear()===y&&today.getMonth()===m&&today.getDate()===d;
+        const isSel = selectedCalDay===dateStr;
+        const hasTasks = taskDates.has(dateStr);
+        const dow = new Date(y,m,d).getDay();
+        const isWeekend = dow===0||dow===6;
+        html += `<div class="cal-day${isToday?' today':''}${isSel?' selected':''}${hasTasks?' has-tasks':''}${isWeekend&&!isToday?' weekend':''}" onclick="selectCalDay('${dateStr}')">${d}</div>`;
+        }
+        // next month
+        const remaining = 42 - first - days;
+        for (let d=1;d<=remaining;d++) {
+        html += `<div class="cal-day other-month">${d}</div>`;
+        }
+        document.getElementById('calGrid').innerHTML = html;
+
+        if (selectedCalDay) showCalDayTasks(selectedCalDay);
+        }
+
+        function selectCalDay(dateStr) {
+        selectedCalDay = dateStr;
+        renderMonth();
+        showCalDayTasks(dateStr);
+        }
+
+        function showCalDayTasks(dateStr) {
+        const dayTasks = getTasksForDate(dateStr).sort((a,b)=>a.time.localeCompare(b.time));
+        const parts = dateStr.split('-');
+        document.getElementById('cstTitle').textContent = `${parseInt(parts[2])}/${parseInt(parts[1])}/${parts[0]}`;
+        const list = document.getElementById('cstList');
+        if (!dayTasks.length) {
+        list.innerHTML = '<div class="empty-state" style="padding:20px"><div class="empty-icon">??</div><div class="empty-text">Không có task nào ngày này</div></div>';
+        return;
+        }
+        list.innerHTML = '';
+        dayTasks.forEach(t => list.appendChild(makeTaskCard(t)));
+        }
+
+        function changeMonth(dir) {
+        calViewDate.setMonth(calViewDate.getMonth()+dir);
+        selectedCalDay = null;
+        renderMonth();
+        }
+
+        // ?? YEAR ??
+        function renderYear() {
+        document.getElementById('yearTitle').textContent = yearView;
+        const now = new Date();
+        const months = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+        let html = '';
+        for (let m=0;m<12;m++) {
+        const isCurrentMonth = now.getFullYear()===yearView&&now.getMonth()===m;
+        const daysInMonth = new Date(yearView,m+1,0).getDate();
+        const firstDow = new Date(yearView,m,1).getDay();
+        const taskCount = tasks.filter(t=>{
+        const d = new Date(t.date);
+        return d.getFullYear()===yearView&&d.getMonth()===m;
+        }).length;
+        const taskDates = new Set(tasks.filter(t=>{
+        const d = new Date(t.date);
+        return d.getFullYear()===yearView&&d.getMonth()===m;
+        }).map(t=>parseInt(t.date.split('-')[2])));
+
+        let minHtml = '';
+        for(let i=0;i<firstDow;i++) minHtml+=`<div class="mm-day mm-other"></div>`;
+        for(let d=1;d<=daysInMonth;d++){
+        const isToday=now.getFullYear()===yearView&&now.getMonth()===m&&now.getDate()===d;
+        const hasTask=taskDates.has(d);
+        minHtml+=`<div class="mm-day${isToday?' mm-today':hasTask?' mm-has':''}"></div>`;
+        }
+        html+=`<div class="month-mini${isCurrentMonth?' current-month':''}" onclick="goToMonth(${m})">
+        <div class="mm-title">${months[m]}<span class="mm-count">${taskCount}</span></div>
+        <div class="mm-grid">${minHtml}</div>
+        </div>`;
+        }
+        document.getElementById('yearGrid').innerHTML = html;
+        }
+
+        function goToMonth(m) {
+        calViewDate = new Date(yearView, m, 1);
+        goTab(1);
+        }
+        function changeYear(dir) { yearView += dir; renderYear(); }
+
+        // ?? STATS ??
+        function renderStats() {
+        const total = tasks.length;
+        const done = tasks.filter(t=>t.done).length;
+        const pending = total - done;
+        const rate = total ? Math.round(done/total*100) : 0;
+        document.getElementById('statTotal').textContent = total;
+        document.getElementById('statDone').textContent = done;
+        document.getElementById('statPending').textContent = pending;
+        document.getElementById('statRate').textContent = rate+'%';
+
+        // Weekly bars
+        const days = ['CN','T2','T3','T4','T5','T6','T7'];
+        const now = new Date();
+        let barsHtml = '';
+        const weekData = [];
+        for (let i=6;i>=0;i--) {
+        const d = new Date(now); d.setDate(d.getDate()-i);
+        const ds = d.toISOString().split('T')[0];
+        const dayTasks = tasks.filter(t=>t.date===ds);
+        const dayDone = dayTasks.filter(t=>t.done).length;
+        weekData.push({day:days[d.getDay()],total:dayTasks.length,done:dayDone,isToday:i===0});
+        }
+        const maxT = Math.max(...weekData.map(w=>w.total),1);
+        weekData.forEach(w=>{
+        const h = Math.round(w.total/maxT*100);
+        barsHtml+=`<div class="wc-bar-wrap">
+        <div class="wc-bar-bg"><div class="wc-bar-fill${w.isToday?' today-bar':''}" style="height:${h}%"></div></div>
+        <div class="wc-label">${w.day}</div>
+        </div>`;
+        });
+        document.getElementById('weeklyBars').innerHTML = barsHtml;
+
+        // Cat breakdown
+        const cats = ['work','personal','health','study','other'];
+        const catColors = {work:'var(--accent)',personal:'var(--green)',health:'var(--red)',study:'var(--purple)',other:'var(--yellow)'};
+        const catLabels = {work:'Công việc',personal:'Cá nhân',health:'Sức khỏe',study:'Học tập',other:'Khác'};
+        const maxCat = Math.max(...cats.map(c=>tasks.filter(t=>t.cat===c).length),1);
+        let cbHtml = '';
+        cats.forEach(c=>{
+        const n = tasks.filter(t=>t.cat===c).length;
+        const w = Math.round(n/maxCat*100);
+        cbHtml+=`<div class="cb-row">
+        <div class="cb-dot" style="background:${catColors[c]}"></div>
+        <div class="cb-label">${catLabels[c]}</div>
+        <div class="cb-bar-bg"><div class="cb-bar-fill" style="width:${w}%;background:${catColors[c]}"></div></div>
+        <div class="cb-num">${n}</div>
+        </div>`;
+        });
+        document.getElementById('catBreakdown').innerHTML = cbHtml;
+        }
+
+        // ?? OVERLAY ??
+        function openAdd() {
+        document.getElementById('fTitle').value='';
+        document.getElementById('fNote').value='';
+        document.getElementById('fDate').value=todayStr();
+        document.getElementById('fTime').value='';
+        document.getElementById('fDuration').value='60';
+        document.getElementById('fDeadline').value='';
+        selCat='work'; selPri='med'; selRec='none';
+        document.querySelectorAll('.cat-opt').forEach(el=>el.className='cat-opt');
+        document.querySelector('.cat-opt[data-cat="work"]').className='cat-opt sel-work';
+        document.querySelectorAll('.pri-opt').forEach(el=>el.classList.remove('sel'));
+        document.querySelector('.pri-opt[data-pri="med"]').classList.add('sel');
+        document.querySelectorAll('.rec-opt').forEach(el=>el.classList.remove('sel'));
+        document.querySelector('.rec-opt[data-rec="none"]').classList.add('sel');
+        document.getElementById('ovAdd').classList.add('open');
+        }
+
+        function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
+
+        function pickCat(el) {
+        selCat = el.dataset.cat;
+        document.querySelectorAll('.cat-opt').forEach(e=>e.className='cat-opt');
+        el.className = `cat-opt sel-${selCat}`;
+        }
+
+        function pickPri(el) {
+        selPri = el.dataset.pri;
+        document.querySelectorAll('.pri-opt').forEach(e=>e.classList.remove('sel'));
+        el.classList.add('sel');
+        }
+
+        function pickRec(el) {
+        selRec = el.dataset.rec;
+        document.querySelectorAll('.rec-opt').forEach(e=>e.classList.remove('sel'));
+        el.classList.add('sel');
+        }
+
+        function saveTask() {
+        const title = document.getElementById('fTitle').value.trim();
+        if (!title) { document.getElementById('fTitle').focus(); return; }
+        tasks.push({
+        id: Date.now(),
+        title,
+        note: document.getElementById('fNote').value.trim(),
+        date: document.getElementById('fDate').value || todayStr(),
+        time: document.getElementById('fTime').value,
+        duration: parseInt(document.getElementById('fDuration').value)||0,
+        deadline: document.getElementById('fDeadline').value,
+        cat: selCat, pri: selPri, rec: selRec,
+        done: false, ts: Date.now()
+        });
+        save();
+        closeOverlay('ovAdd');
+        if(currentTab===0) renderToday();
+        if(currentTab===1) renderMonth();
+        if(currentTab===3) renderStats();
+        }
+
+        // ?? FOCUS TIMER ??
+        function openFocusTimer() {
+        const todayT = getTodayTasks().filter(t=>!t.done);
+        const focusTaskEl = document.getElementById('focusTaskName');
+        if (todayT.length) {
+        focusTaskEl.textContent = todayT[0].title;
+        } else {
+        focusTaskEl.textContent = 'Không có task — chọn từ danh sách';
+        }
+        document.getElementById('ovFocus').classList.add('open');
+        updateFocusDisplay();
+        }
+
+        function setFocusPreset(el) {
+        if (focusRunning) return;
+        document.querySelectorAll('.focus-preset').forEach(e=>e.classList.remove('sel'));
+        el.classList.add('sel');
+        const min = parseInt(el.dataset.min);
+        focusTotal = min*60;
+        focusLeft = focusTotal;
+        updateFocusDisplay();
+        }
+
+        function toggleFocus() {
+        if (focusRunning) {
+        clearInterval(focusInterval);
+        focusRunning = false;
+        document.getElementById('focusStartBtn').textContent = '▶ Tiếp tục';
+        } else {
+        focusRunning = true;
+        document.getElementById('focusStartBtn').textContent = '⏸ Dừng';
+        focusInterval = setInterval(()=>{
+        focusLeft--;
+        updateFocusDisplay();
+        if (focusLeft<=0) {
+        clearInterval(focusInterval);
+        focusRunning = false;
+        document.getElementById('focusStartBtn').textContent = '▶ Bắt đầu';
+        document.getElementById('focusTimeDisplay').textContent = '⏰';
+        }
+        },1000);
+        }
+        }
+
+        function resetFocus() {
+        clearInterval(focusInterval);
+        focusRunning = false;
+        focusLeft = focusTotal;
+        document.getElementById('focusStartBtn').textContent = '▶ Bắt đầu';
+        updateFocusDisplay();
+        }
+
+        function updateFocusDisplay() {
+        const m = Math.floor(focusLeft/60);
+        const s = focusLeft%60;
+        document.getElementById('focusTimeDisplay').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        const circ = 439.8;
+        const offset = circ*(1-(focusLeft/focusTotal));
+        document.getElementById('focusRing').style.strokeDashoffset = offset;
+        }
+
+        // ?? INIT ??
+        renderToday();
+    </script>
+</body>
+</html>
