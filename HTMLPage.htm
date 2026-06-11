@@ -631,23 +631,7 @@ let xpData = JSON.parse(localStorage.getItem('tf_xp') || '{"xp":0,"streak":0,"la
 // ─────────────────────────────────────────
 // SEED DATA
 // ─────────────────────────────────────────
-if (!tasks.length) {
-    const today = new Date().toISOString().split('T')[0];
-    tasks = [
-        {id:1, title:'Ki\u1ec3m tra email bu\u1ed5i s\u00e1ng', note:'', date:today, time:'08:00', duration:30, deadline:'', cat:'work', pri:'high', rec:'none', done:false, ts:Date.now()},
-        {id:2, title:'T\u1eadp th\u1ec3 d\u1ee5c', note:'Ch\u1ea1y b\u1ed9 30 ph\u00fat', date:today, time:'07:00', duration:45, deadline:'', cat:'health', pri:'med', rec:'daily', done:true, ts:Date.now()},
-        {id:3, title:'\u0110\u1ecdc s\u00e1ch 30 ph\u00fat', note:'', date:today, time:'21:00', duration:30, deadline:'', cat:'study', pri:'low', rec:'daily', done:false, ts:Date.now()},
-        {id:4, title:'H\u1eafp team d\u1ef1 \u00e1n', note:'Ph\u00f2ng h\u1eafp B2', date:today, time:'10:00', duration:60, deadline:'', cat:'work', pri:'high', rec:'none', done:false, ts:Date.now()},
-        {id:5, title:'N\u1ea5u \u0103n t\u1ed1i', note:'', date:today, time:'18:00', duration:45, deadline:'', cat:'personal', pri:'med', rec:'daily', done:false, ts:Date.now()},
-    ];
-    const d1 = new Date(); d1.setDate(d1.getDate()-1);
-    const d2 = new Date(); d2.setDate(d2.getDate()+1);
-    const d3 = new Date(); d3.setDate(d3.getDate()+2);
-    [d1,d2,d3].forEach((d,i) => {
-        tasks.push({id:10+i, title:'Task ng\u00e0y '+d.getDate()+'/'+(d.getMonth()+1), note:'', date:d.toISOString().split('T')[0], time:'09:00', duration:60, deadline:'', cat:['work','personal','study'][i], pri:'med', rec:'none', done:i===0, ts:Date.now()});
-    });
-    save();
-}
+
 
 function save() { localStorage.setItem('tf_tasks', JSON.stringify(tasks)); }
 function saveXP() { localStorage.setItem('tf_xp', JSON.stringify(xpData)); }
