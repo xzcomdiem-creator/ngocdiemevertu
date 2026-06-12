@@ -1209,18 +1209,23 @@ function renderTimeBlocks(today) {
             hTasks.forEach(t => {
                 const startMin = parseInt(t.time.split(':')[1]) || 0;
                 const totalMin = (t.duration || 60);
-                const spanHours = Math.max(1, Math.ceil((startMin + totalMin) / 60));
-                const endH = h + spanHours;
-                const endMin = (startMin + totalMin) % 60;
+                // Total minutes from start of the hour slot to end of task
+                const minsFromSlotStart = startMin + totalMin;
+                const spanHours = Math.max(1, Math.ceil(minsFromSlotStart / 60));
+                // Exact end time
+                const totalStartMins = h * 60 + startMin + totalMin;
+                const endH = Math.floor(totalStartMins / 60);
+                const endMin = totalStartMins % 60;
                 const endLabel = String(Math.min(endH, 23)).padStart(2,'0') + ':' + String(endMin).padStart(2,'0');
-                for (let s = h + 1; s < endH && s <= 22; s++) spannedHours.add(s);
+                // Mark spanned hour slots so they're skipped
+                for (let s = h + 1; s < Math.ceil(totalStartMins / 60) && s <= 22; s++) spannedHours.add(s);
                 const blockH = spanHours * ROW_H + (spanHours - 1) * 6;
-                const isCurBlock = h <= curH && curH < endH;
+                const isCurBlock = (h * 60 + startMin) <= (curH * 60 + now.getMinutes()) && (curH * 60 + now.getMinutes()) < totalStartMins;
                 const row = document.createElement('div');
                 row.className = 'time-block';
                 row.innerHTML =
                     '<div class="tb-time-col" style="align-items:flex-end;padding-top:4px">'
-                    + '<div class="tb-hour">' + hStr + '</div>'
+                    + '<div class="tb-hour">' + t.time + '</div>'
                     + (spanHours > 1 ? '<div class="tb-hour" style="margin-top:auto;padding-bottom:4px;color:var(--text3)">'+endLabel+'</div>' : '')
                     + '</div>'
                     + '<div class="tb-content has-task' + (isCurBlock?' current-hour':'') + '" '
@@ -1230,7 +1235,7 @@ function renderTimeBlocks(today) {
                     + '<div class="tb-task-name">' + (t.done?'✓ ':'') + '<span style="'+(t.done?'text-decoration:line-through;opacity:.5':'')+'">' + escHtml(t.title) + '</span></div>'
                     + '<div class="tb-task-sub" style="margin-top:4px">'
                     + (t.duration ? t.duration+' ph\u00fat' : '') + ' · ' + getCatLabel(t.cat)
-                    + (spanHours > 1 ? ' · <span style="color:var(--accent);font-weight:700">'+hStr+' → '+endLabel+'</span>' : '')
+                    + (spanHours > 1 ? ' · <span style="color:var(--accent);font-weight:700">'+t.time+' → '+endLabel+'</span>' : '')
                     + '</div>'
                     + (isCurBlock && !t.done ? '<div style="margin-top:8px;font-size:10px;color:var(--green);font-weight:700">● Đang diễn ra</div>' : '')
                     + '</div></div>';
