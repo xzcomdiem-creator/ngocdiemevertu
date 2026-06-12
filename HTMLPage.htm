@@ -1441,7 +1441,7 @@ function renderTimeBlocks(today) {
                 const endMin = totalStartMins % 60;
                 const endLabel = String(Math.min(endH, 23)).padStart(2,'0') + ':' + String(endMin).padStart(2,'0');
                 // Mark spanned hour slots so they're skipped
-                for (let s = h + 1; s < Math.ceil(totalStartMins / 60) && s <= 22; s++) spannedHours.add(s);
+                for (let s = h + 1; s < endH && s <= 22; s++) spannedHours.add(s);
                 const blockH = spanHours * ROW_H + (spanHours - 1) * 6;
                 const isCurBlock = (h * 60 + startMin) <= (curH * 60 + now.getMinutes()) && (curH * 60 + now.getMinutes()) < totalStartMins;
                 const row = document.createElement('div');
