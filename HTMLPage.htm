@@ -43,6 +43,8 @@
         .header-actions { display:flex; gap:3px; flex-shrink:0 }
         .hbtn { width:32px; height:32px; border-radius:8px; background:var(--surface); border:1px solid var(--border); color:var(--text2); font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .2s }
         .hbtn:active { transform:scale(.93) }
+        .hbtn-add { width:32px; height:32px; border-radius:8px; background:linear-gradient(135deg,var(--accent),var(--purple)); border:none; color:#fff; font-size:18px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .2s }
+        .hbtn-add:active { transform:scale(.93) }
 
         /* ─ SEARCH BAR ─ */
         .search-bar { flex-shrink:0; padding:8px 14px; background:var(--bg); border-bottom:1px solid var(--border); display:none }
@@ -81,10 +83,9 @@
         .screen.active { display:block }
         .screen::-webkit-scrollbar { width:4px }
         .screen::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px }
-        .bottom-space { height:70px }
+        .bottom-space { height:20px }
 
-        .fab { position:fixed; bottom:calc(env(safe-area-inset-bottom,0px)+14px); right:18px; z-index:50; width:50px; height:50px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--purple)); border:none; color:#fff; font-size:22px; cursor:pointer; box-shadow:0 4px 20px rgba(99,140,255,0.5); transition:all .2s; display:flex; align-items:center; justify-content:center }
-        .fab:active { transform:scale(.92) }
+        .fab { display:none }
 
         .sec-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; margin-top:16px }
         .sec-head:first-child { margin-top:0 }
@@ -332,6 +333,7 @@
     </div>
     <div class="header-date" id="headerDate">--:-- | --</div>
     <div class="header-actions">
+        <button class="hbtn-add" onclick="openAdd()" title="Thêm task">＋</button>
         <button class="hbtn" onclick="toggleSearch()" title="Tìm kiếm">🔍</button>
         <button class="hbtn" onclick="openFocusTimer()" title="Pomodoro">🎯</button>
         <button class="hbtn" onclick="toggleNotifPermission()" id="notifBtn" title="Bật thông báo">🔔</button>
@@ -456,7 +458,7 @@
     </div>
 </div>
 
-<button class="fab" onclick="openAdd()">＋</button>
+
 
 <!-- ADD / EDIT TASK -->
 <div class="overlay" id="ovAdd" onclick="if(event.target===this)closeOverlay('ovAdd')">
