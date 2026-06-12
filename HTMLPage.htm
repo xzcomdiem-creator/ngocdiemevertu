@@ -687,6 +687,32 @@ let morningShown = false;
 let reminderInterval = null;
 let activeReminders = new Set();
 let dragSrcId = null;
+    // ─────────────────────────────────────────
+// RINGTONES — 20 mẫu nhạc tổng hợp (Web Audio)
+// ─────────────────────────────────────────
+const RINGTONES = [
+    {id:'classic',  name:'Cổ điển',   icon:'🔔', notes:[[880,0,0.18],[1100,0.2,0.18],[880,0.4,0.15]]},
+    {id:'digital',  name:'Digital',   icon:'📟', notes:[[660,0,0.08],[880,0.1,0.08],[660,0.2,0.08],[880,0.3,0.08]]},
+    {id:'chime',    name:'Chuông gió',icon:'🎐', notes:[[523,0,0.3],[659,0.15,0.3],[784,0.3,0.4]]},
+    {id:'alarm',    name:'Báo động',  icon:'🚨', notes:[[440,0,0.1],[880,0.12,0.1],[440,0.24,0.1],[880,0.36,0.1]]},
+    {id:'marimba',  name:'Marimba',   icon:'🎵', notes:[[523,0,0.2],[659,0.18,0.2],[784,0.36,0.2],[1047,0.54,0.3]]},
+    {id:'bell',     name:'Chuông nhà',icon:'🛎️', notes:[[988,0,0.4],[988,0.5,0.3]]},
+    {id:'siren',    name:'Cảnh báo',  icon:'⚠️', notes:[[600,0,0.15],[900,0.16,0.15],[600,0.32,0.15],[900,0.48,0.15],[600,0.64,0.15]]},
+    {id:'piano',    name:'Piano',     icon:'🎹', notes:[[523,0,0.25],[523,0.3,0.25],[659,0.6,0.35]]},
+    {id:'rooster',  name:'Gà gáy',    icon:'🐓', notes:[[700,0,0.1],[900,0.1,0.1],[1200,0.2,0.25]]},
+    {id:'space',    name:'Vũ trụ',    icon:'🛰️', notes:[[300,0,0.3],[600,0.25,0.3],[1200,0.5,0.4]]},
+    {id:'gentle',   name:'Nhẹ nhàng', icon:'🌙', notes:[[528,0,0.3],[660,0.35,0.25],[528,0.65,0.2]]},
+    {id:'urgent',   name:'Cấp tốc',   icon:'🔥', notes:[[660,0,0.1],[880,0.12,0.1],[660,0.24,0.1],[880,0.36,0.1],[1100,0.48,0.2]]},
+    {id:'crystal',  name:'Pha lê',    icon:'💎', notes:[[1047,0,0.2],[1319,0.15,0.2],[1568,0.3,0.3]]},
+    {id:'morning',  name:'Buổi sáng', icon:'🌅', notes:[[440,0,0.2],[554,0.2,0.2],[659,0.4,0.2],[880,0.6,0.3]]},
+    {id:'retro',    name:'Hoài cổ',   icon:'📻', notes:[[392,0,0.15],[523,0.16,0.15],[392,0.32,0.15],[523,0.48,0.15]]},
+    {id:'notify',   name:'Thông báo', icon:'💬', notes:[[800,0,0.1],[1000,0.1,0.12]]},
+    {id:'gamer',    name:'Game',      icon:'🎮', notes:[[523,0,0.08],[659,0.08,0.08],[784,0.16,0.08],[1047,0.24,0.16]]},
+    {id:'temple',   name:'Chuông chùa',icon:'🪷', notes:[[349,0,0.6],[349,0.7,0.5]]},
+    {id:'pulse',    name:'Nhịp đập',  icon:'💓', notes:[[220,0,0.12],[220,0.2,0.12],[220,0.5,0.12],[220,0.7,0.12]]},
+    {id:'fanfare',  name:'Kèn hiệu',  icon:'📯', notes:[[523,0,0.15],[659,0.15,0.15],[784,0.3,0.15],[1047,0.45,0.35]]},
+];
+let selRingtone = localStorage.getItem('tf_ringtone') || 'classic';
 
 // XP / Gamification
 let xpData = JSON.parse(localStorage.getItem('tf_xp') || '{"xp":0,"streak":0,"lastCompletedDate":"","badges":[]}');
@@ -982,30 +1008,31 @@ function startAlarm() {
     try {
         alarmCtx = new (window.AudioContext || window.webkitAudioContext)();
         // Chuỗi nốt nhạc báo thức: lặp mỗi 1.2s trong 15s
-        const melody = [880, 988, 1047, 988, 880, 0, 880, 988, 1047, 988, 880, 0];
-        const noteLen = 0.18;
-        const gap = 1.2 / melody.length;
-        const repeatEvery = 1.2;
-        const totalSec = 60;
+const ringtone = RINGTONES.find(x => x.id === selRingtone) || RINGTONES[0];
+const melody = ringtone.notes;
+// Tổng độ dài 1 chu kỳ (giây)
+const cycleLen = Math.max(...melody.map(([f,s,d]) => s+d)) + 0.3;
+const repeatEvery = cycleLen;
+const totalSec = 60;
 
-        for (let rep = 0; rep < Math.ceil(totalSec / repeatEvery); rep++) {
-            melody.forEach((freq, i) => {
-                if (!freq) return;
-                const t0 = alarmCtx.currentTime + rep * repeatEvery + i * gap;
-                if (t0 > alarmCtx.currentTime + totalSec) return;
-                const osc = alarmCtx.createOscillator();
-                const gain = alarmCtx.createGain();
-                osc.connect(gain); gain.connect(alarmCtx.destination);
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(freq, t0);
-                gain.gain.setValueAtTime(0, t0);
-                gain.gain.linearRampToValueAtTime(0.45, t0 + 0.015);
-                gain.gain.exponentialRampToValueAtTime(0.001, t0 + noteLen);
-                osc.start(t0);
-                osc.stop(t0 + noteLen + 0.02);
-                alarmNodes.push({ osc, gain });
-            });
-        }
+for (let rep = 0; rep < Math.ceil(totalSec / repeatEvery); rep++) {
+    melody.forEach(([freq, start, dur]) => {
+        if (!freq) return;
+        const t0 = alarmCtx.currentTime + rep * repeatEvery + start;
+        if (t0 > alarmCtx.currentTime + totalSec) return;
+        const osc = alarmCtx.createOscillator();
+        const gain = alarmCtx.createGain();
+        osc.connect(gain); gain.connect(alarmCtx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, t0);
+        gain.gain.setValueAtTime(0, t0);
+        gain.gain.linearRampToValueAtTime(0.45, t0 + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+        osc.start(t0);
+        osc.stop(t0 + dur + 0.02);
+        alarmNodes.push({ osc, gain });
+    });
+}
         // Tự tắt sau 15s
         alarmTimeout = setTimeout(() => {
             stopAlarm();
@@ -1042,6 +1069,55 @@ function playGentleSound() {
         });
     } catch(e) {}
 }
+// ─────────────────────────────────────────
+// RINGTONE PLAY / RENDER
+// ─────────────────────────────────────────
+function playRingtonePattern(notes, ctxTarget) {
+    const ctx = ctxTarget || new (window.AudioContext || window.webkitAudioContext)();
+    notes.forEach(([freq, start, dur]) => {
+        if (!freq) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+        gain.gain.setValueAtTime(0, ctx.currentTime + start);
+        gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + start + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+        osc.start(ctx.currentTime + start);
+        osc.stop(ctx.currentTime + start + dur + 0.05);
+    });
+    return ctx;
+}
+
+function previewRingtone(id, event) {
+    if (event) event.stopPropagation();
+    const r = RINGTONES.find(x => x.id === id);
+    if (r) playRingtonePattern(r.notes);
+}
+
+function renderRingtoneRow() {
+    const wrap = document.getElementById('ringtoneRow');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    RINGTONES.forEach(r => {
+        const el = document.createElement('div');
+        el.className = 'ringtone-opt' + (selRingtone === r.id ? ' sel' : '');
+        el.innerHTML = `<div class="ringtone-icon">${r.icon}</div>
+            <div class="ringtone-name">${r.name}</div>
+            <div class="ringtone-play" onclick="previewRingtone('${r.id}', event)">▶ Nghe</div>`;
+        el.onclick = () => pickRingtone(r.id);
+        wrap.appendChild(el);
+    });
+}
+
+function pickRingtone(id) {
+    selRingtone = id;
+    localStorage.setItem('tf_ringtone', id);
+    renderRingtoneRow();
+    const r = RINGTONES.find(x => x.id === id);
+    if (r) playRingtonePattern(r.notes);
+}    
 
 // ─────────────────────────────────────────
 // ALARM OVERLAY (fullscreen dismiss)
@@ -1647,8 +1723,7 @@ function openAdd() {
     document.getElementById('fDuration').value='60';
     document.getElementById('fDeadline').value='';
     selCat='work'; selPri='med'; selRec='none';
-    renderCatSelect(); applyPriUI(); applyRecUI();
-    document.getElementById('ovAdd').classList.add('open');
+    renderCatSelect(); applyPriUI(); applyRecUI(); renderRingtoneRow();    document.getElementById('ovAdd').classList.add('open');
     setTimeout(() => document.getElementById('fTitle').focus(), 350);
 }
 function openEdit(id) {
@@ -1664,7 +1739,7 @@ function openEdit(id) {
     document.getElementById('fDuration').value=t.duration||60;
     document.getElementById('fDeadline').value=t.deadline||'';
     selCat=t.cat; selPri=t.pri; selRec=t.rec||'none';
-    renderCatSelect(); applyPriUI(); applyRecUI();
+    renderCatSelect(); applyPriUI(); applyRecUI(); renderRingtoneRow();
     document.getElementById('ovAdd').classList.add('open');
 }
 function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
@@ -1899,6 +1974,7 @@ function updateFocusDisplay(){
 // ─────────────────────────────────────────
 generateRecurringTasks();   // ← FIX: spawn today's recurring tasks on startup
 updateNotifBtn();
+renderRingtoneRow();
 renderToday();
 </script>
 </body>
