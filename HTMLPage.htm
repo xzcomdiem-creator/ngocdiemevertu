@@ -1187,12 +1187,20 @@ function dismissAlarm() {
 function snoozeAlarm(taskId) {
     stopAlarm();
     closeAlarmOverlay();
+
+    // === QUAN TRỌNG: Xóa banner hiện tại ngay lập tức ===
+    const currentBanners = document.querySelectorAll(`[id^="rem_${taskId}"]`);
+    currentBanners.forEach(banner => banner.remove());
+
     // Nhắc lại sau 5 phút
     setTimeout(() => {
         const t = tasks.find(x => x.id === taskId);
-        if (t && !t.done) triggerAlarm(t, 0);
+        if (t && !t.done) {
+            triggerAlarm(t, 0);        // diff = 0 nghĩa là "ngay bây giờ"
+        }
     }, 5 * 60 * 1000);
-    showToast('💤 Báo lại sau 5 phút');
+
+    showToast('💤 Đã báo lại sau 5 phút');
 }
 
 function triggerAlarm(task, diff) {
