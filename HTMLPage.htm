@@ -345,6 +345,17 @@
         .reminder-time { font-size:12px; font-family:'JetBrains Mono',monospace; color:var(--accent); font-weight:700 }
         .reminder-title { font-size:12px; color:var(--text); font-weight:600; flex:1 }
         .reminder-dismiss { font-size:14px; cursor:pointer; color:var(--text3) }
+
+        /* ─ RINGTONE SELECTOR ─ */
+        .ringtone-row { display:flex; gap:6px; flex-wrap:wrap }
+        .ringtone-opt { display:flex; flex-direction:column; align-items:center; gap:5px; padding:8px 10px; border-radius:var(--radius-sm); background:var(--surface); border:1.5px solid var(--border); cursor:pointer; transition:all .2s; min-width:58px }
+        .ringtone-opt.sel { border-color:var(--accent); background:var(--accent-glow) }
+        .ringtone-opt:active { transform:scale(.93) }
+        .ringtone-icon { font-size:22px; line-height:1 }
+        .ringtone-name { font-size:9px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.4px; text-align:center }
+        .ringtone-opt.sel .ringtone-name { color:var(--accent) }
+        .ringtone-play { font-size:9px; color:var(--text3); background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:1px 6px; cursor:pointer; transition:all .2s }
+        .ringtone-opt.sel .ringtone-play { color:var(--accent); border-color:var(--accent) }
     </style>
 </head>
 <body>
@@ -536,6 +547,10 @@
                 <div class="rec-opt" data-rec="weekly" onclick="pickRec(this)">Hàng tuần</div>
                 <div class="rec-opt" data-rec="monthly" onclick="pickRec(this)">Hàng tháng</div>
             </div>
+        </div>
+        <div class="form-group" id="ringtoneGroup">
+            <label class="form-label">Nhạc báo thức</label>
+            <div class="ringtone-row" id="ringtoneRow"></div>
         </div>
         <button class="submit-btn" id="submitBtn" onclick="saveTask()">✓ Lưu task</button>
     </div>
@@ -955,23 +970,72 @@ async function toggleNotifPermission() {
     else showToast('Không thể bật thông báo', 'warning');
 }
 
-function playAlertSound(type = 'ding') {
+// ─────────────────────────────────────────
+// ALARM SOUND ENGINE (15 giây, lặp lại)
+// ─────────────────────────────────────────
+let alarmCtx = null;
+let alarmNodes = [];    // { osc, gain } để stop
+let alarmTimeout = null;
+
+function startAlarm() {
+    stopAlarm(); // dừng cái cũ nếu có
+    try {
+        alarmCtx = new (window.AudioContext || window.webkitAudioContext)();
+        // Chuỗi nốt nhạc báo thức: lặp mỗi 1.2s trong 15s
+        const melody = [880, 988, 1047, 988, 880, 0, 880, 988, 1047, 988, 880, 0];
+        const noteLen = 0.18;
+        const gap = 1.2 / melody.length;
+        const repeatEvery = 1.2;
+        const totalSec = 60;
+
+        for (let rep = 0; rep < Math.ceil(totalSec / repeatEvery); rep++) {
+            melody.forEach((freq, i) => {
+                if (!freq) return;
+                const t0 = alarmCtx.currentTime + rep * repeatEvery + i * gap;
+                if (t0 > alarmCtx.currentTime + totalSec) return;
+                const osc = alarmCtx.createOscillator();
+                const gain = alarmCtx.createGain();
+                osc.connect(gain); gain.connect(alarmCtx.destination);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, t0);
+                gain.gain.setValueAtTime(0, t0);
+                gain.gain.linearRampToValueAtTime(0.45, t0 + 0.015);
+                gain.gain.exponentialRampToValueAtTime(0.001, t0 + noteLen);
+                osc.start(t0);
+                osc.stop(t0 + noteLen + 0.02);
+                alarmNodes.push({ osc, gain });
+            });
+        }
+        // Tự tắt sau 15s
+        alarmTimeout = setTimeout(() => {
+            stopAlarm();
+            closeAlarmOverlay();
+        }, 60500);
+    } catch(e) {}
+}
+
+function stopAlarm() {
+    clearTimeout(alarmTimeout);
+    if (alarmCtx) {
+        try { alarmNodes.forEach(n => { try { n.osc.stop(); } catch(_){} }); } catch(_) {}
+        try { alarmCtx.close(); } catch(_) {}
+        alarmCtx = null;
+        alarmNodes = [];
+    }
+}
+
+// Âm nhẹ cho nhắc trước (5p, 15p)
+function playGentleSound() {
     try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const patterns = {
-            ding: [[880, 0, 0.15], [1100, 0.18, 0.15], [880, 0.36, 0.12]],
-            urgent: [[660,0,0.1],[880,0.12,0.1],[660,0.24,0.1],[880,0.36,0.1],[1100,0.48,0.2]],
-            gentle: [[528, 0, 0.3], [660, 0.35, 0.25]]
-        };
-        const notes = patterns[type] || patterns.ding;
-        notes.forEach(([freq, start, dur]) => {
+        [[528,0,0.3],[660,0.35,0.25],[528,0.65,0.2]].forEach(([freq,start,dur]) => {
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             osc.connect(gain); gain.connect(ctx.destination);
             osc.type = 'sine';
             osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
             gain.gain.setValueAtTime(0, ctx.currentTime + start);
-            gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + start + 0.02);
+            gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + start + 0.02);
             gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
             osc.start(ctx.currentTime + start);
             osc.stop(ctx.currentTime + start + dur + 0.05);
@@ -979,16 +1043,96 @@ function playAlertSound(type = 'ding') {
     } catch(e) {}
 }
 
-function sendNotification(task, diff) {
+// ─────────────────────────────────────────
+// ALARM OVERLAY (fullscreen dismiss)
+// ─────────────────────────────────────────
+function showAlarmOverlay(task) {
+    const existing = document.getElementById('alarmOverlay');
+    if (existing) existing.remove();
+
+    const el = document.createElement('div');
+    el.id = 'alarmOverlay';
+    el.style.cssText = `
+        position:fixed;inset:0;z-index:999;
+        background:rgba(8,12,28,0.96);backdrop-filter:blur(12px);
+        display:flex;flex-direction:column;align-items:center;justify-content:center;
+        gap:16px;padding:32px;animation:alarmIn .3s cubic-bezier(.34,1.56,.64,1)
+    `;
+    el.innerHTML = `
+        <style>
+            @keyframes alarmIn { from{opacity:0;transform:scale(.9)} to{opacity:1;transform:scale(1)} }
+            @keyframes ringPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
+            #alarmRingIcon { animation:ringPulse .6s ease-in-out infinite }
+            #alarmBar { height:4px;border-radius:2px;background:linear-gradient(90deg,var(--accent),var(--purple));
+                width:100%;animation:alarmBarDrain 60s linear forwards }
+            @keyframes alarmBarDrain { from{width:100%} to{width:0%} }
+        </style>
+        <div id="alarmRingIcon" style="font-size:64px">⏰</div>
+        <div style="font-size:14px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:1px">Đến giờ!</div>
+        <div style="font-size:24px;font-weight:800;color:var(--text);text-align:center;max-width:320px;line-height:1.3">
+            ${escHtml(task.title)}
+        </div>
+        ${task.note ? `<div style="font-size:13px;color:var(--text2);text-align:center;max-width:280px">${escHtml(task.note)}</div>` : ''}
+        <div style="font-size:13px;color:var(--accent);font-family:'JetBrains Mono',monospace;font-weight:700">
+            ${task.time || ''}
+        </div>
+        <div style="width:240px;background:var(--surface2);border-radius:2px;overflow:hidden;margin:4px 0">
+            <div id="alarmBar"></div>
+        </div>
+        <button id="alarmDismissBtn" onclick="dismissAlarm()" style="
+            margin-top:8px;padding:14px 48px;border-radius:50px;
+            background:linear-gradient(135deg,var(--accent),var(--purple));
+            border:none;color:#fff;font-size:17px;font-weight:800;
+            cursor:pointer;font-family:inherit;letter-spacing:.3px;
+            box-shadow:0 6px 24px rgba(99,140,255,0.5);
+            transition:transform .15s
+        " onmousedown="this.style.transform='scale(.95)'" onmouseup="this.style.transform=''">
+            🔕 Tắt báo thức
+        </button>
+        <button onclick="snoozeAlarm(${task.id})" style="
+            padding:8px 24px;border-radius:20px;background:none;
+            border:1px solid var(--border2);color:var(--text3);
+            font-size:13px;font-weight:600;cursor:pointer;font-family:inherit
+        ">💤 Báo lại 5 phút</button>
+    `;
+    document.body.appendChild(el);
+}
+
+function closeAlarmOverlay() {
+    const el = document.getElementById('alarmOverlay');
+    if (el) { el.style.animation = 'none'; el.style.opacity = '0'; el.style.transition = 'opacity .25s'; setTimeout(() => el.remove(), 250); }
+}
+
+function dismissAlarm() {
+    stopAlarm();
+    closeAlarmOverlay();
+}
+
+function snoozeAlarm(taskId) {
+    stopAlarm();
+    closeAlarmOverlay();
+    // Nhắc lại sau 5 phút
+    setTimeout(() => {
+        const t = tasks.find(x => x.id === taskId);
+        if (t && !t.done) triggerAlarm(t, 0);
+    }, 5 * 60 * 1000);
+    showToast('💤 Báo lại sau 5 phút');
+}
+
+function triggerAlarm(task, diff) {
     const isNow = diff === 0;
-    const title = isNow ? '⏰ Đến giờ rồi!' : `🔔 Còn ${diff} phút`;
-    const body = task.title + (task.note ? '\n' + task.note : '');
-    playAlertSound(isNow ? 'urgent' : 'ding');
+    if (isNow) {
+        startAlarm();
+        showAlarmOverlay(task);
+    } else {
+        playGentleSound();
+    }
+    // In-app banner
     const wrap = document.getElementById('remindersWrap');
-    const id = 'rem_' + task.id + '_' + diff;
-    if (!document.getElementById(id)) {
+    const bannerId = 'rem_' + task.id + '_' + diff;
+    if (!document.getElementById(bannerId)) {
         const div = document.createElement('div');
-        div.className = 'reminder-item'; div.id = id;
+        div.className = 'reminder-item'; div.id = bannerId;
         div.innerHTML = `<span style="font-size:18px">${isNow ? '🚨' : '🔔'}</span>
             <div class="reminder-time">${isNow ? 'Ngay bây giờ!' : 'Còn '+diff+' phút'}</div>
             <div class="reminder-title">${escHtml(task.title)}</div>
@@ -996,19 +1140,22 @@ function sendNotification(task, diff) {
         wrap.prepend(div);
         setTimeout(() => div.remove(), 300000);
     }
+    // OS notification
     if (notifPermission === 'granted') {
         try {
-            const n = new Notification(title, {
-                body,
-                icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><text y="26" font-size="28">⏱</text></svg>',
+            const n = new Notification(isNow ? '⏰ Đến giờ rồi!' : `🔔 Còn ${diff} phút`, {
+                body: task.title + (task.note ? '\n' + task.note : ''),
                 tag: 'tf_' + task.id,
                 requireInteraction: isNow,
-                vibrate: isNow ? [200, 100, 200, 100, 400] : [200, 100, 200]
             });
             n.onclick = () => { window.focus(); n.close(); goTab(0); };
         } catch(e) {}
     }
 }
+
+function sendNotification(task, diff) { triggerAlarm(task, diff); }
+
+
 
 // ─────────────────────────────────────────
 // REMINDERS
