@@ -28,8 +28,7 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = e.request.url;
   // Không cache API calls
-  if (url.includes('anthropic.com') || url.includes('supabase.co')) return;
-
+if (url.includes('anthropic.com') || url.includes('supabase.co') || url.includes('workers.dev')) return;
   e.respondWith(
     caches.match(e.request).then(cached => {
       return cached || fetch(e.request).then(res => {
