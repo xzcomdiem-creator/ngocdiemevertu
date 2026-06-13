@@ -518,6 +518,37 @@
 .note-rendered a { color:var(--accent); text-decoration:none }
 .note-rendered code { background:var(--bg3); border-radius:4px; padding:1px 5px; font-family:'JetBrains Mono',monospace; font-size:11px }
 @keyframes spin { to { transform: rotate(360deg) } }
+    /* ─ MORE MENU ─ */
+.more-menu {
+    position: absolute;
+    top: 56px;
+    right: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 6px;
+    display: none;
+    flex-direction: column;
+    gap: 2px;
+    z-index: 50;
+    min-width: 180px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.35);
+}
+.more-menu.open { display: flex; }
+.more-item {
+    background: none;
+    border: none;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .15s;
+}
+.more-item:active { background: var(--surface2); }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -531,17 +562,22 @@
         TimeFlow
     </div>
     <div class="header-date" id="headerDate">--:-- | --</div>
-    <div class="header-actions">
-        <button class="hbtn-add" onclick="openAdd()" title="Thêm task">＋</button>
-        <button class="hbtn" onclick="toggleSearch()" title="Tìm kiếm">🔍</button>
-        <button class="hbtn" onclick="openFocusTimer()" title="Pomodoro">🎯</button>
-        <button class="hbtn" onclick="toggleNotifPermission()" id="notifBtn" title="Bật thông báo">🔔</button>
-        <button class="hbtn" onclick="toggleXP()" id="xpToggleBtn" title="Bật/tắt tính điểm XP">⭐</button>
-        <button class="hbtn" onclick="openAISuggest()" title="AI tạo task">✨</button>
-        <button class="hbtn" onclick="openTemplates()" title="Mẫu task">📑</button>
-        <button class="hbtn" onclick="toggleTheme()" id="themeBtn" title="Đổi theme">🌙</button>
-        <button class="hbtn" onclick="openExport()" title="Export">📤</button>
-    </div>
+   <div class="header-actions">
+    <button class="hbtn-add" onclick="openAdd()" title="Thêm task">＋</button>
+    <button class="hbtn" onclick="toggleSearch()" title="Tìm kiếm">🔍</button>
+    <button class="hbtn" onclick="openFocusTimer()" title="Pomodoro">🎯</button>
+    <button class="hbtn" onclick="toggleNotifPermission()" id="notifBtn" title="Bật thông báo">🔔</button>
+    <button class="hbtn" onclick="toggleMoreMenu()" title="Thêm tùy chọn">⋯</button>
+</div>
+
+<!-- MORE MENU -->
+<div class="more-menu" id="moreMenu">
+    <button class="more-item" onclick="toggleXP();toggleMoreMenu()" id="xpToggleBtn">⭐ Tính điểm XP</button>
+    <button class="more-item" onclick="openAISuggest();toggleMoreMenu()">✨ AI tạo task</button>
+    <button class="more-item" onclick="openTemplates();toggleMoreMenu()">📑 Mẫu task</button>
+    <button class="more-item" onclick="toggleTheme();toggleMoreMenu()" id="themeBtn">🌙 Đổi giao diện</button>
+    <button class="more-item" onclick="openExport();toggleMoreMenu()">📤 Export / Import</button>
+</div>
 </div>
 
 <!-- SEARCH BAR -->
@@ -1222,12 +1258,13 @@ updateClock();
 function toggleTheme() {
     const isLight = document.body.dataset.theme === 'light';
     document.body.dataset.theme = isLight ? '' : 'light';
-    document.getElementById('themeBtn').textContent = isLight ? '🌙' : '☀️';
+    document.getElementById('themeBtn').textContent = isLight ? '🌙 Đổi giao diện (Tối)' : '☀️ Đổi giao diện (Sáng)';
     localStorage.setItem('tf_theme', isLight ? 'dark' : 'light');
 }
 (function initTheme() {
     const t = localStorage.getItem('tf_theme');
-    if (t === 'light') { document.body.dataset.theme = 'light'; document.getElementById('themeBtn').textContent = '☀️'; }
+    if (t === 'light') { document.body.dataset.theme = 'light'; document.getElementById('themeBtn').textContent = '☀️ Đổi giao diện (Sáng)'; }
+    else { document.getElementById('themeBtn').textContent = '🌙 Đổi giao diện (Tối)'; }
 })();
 
 // ─── TOAST ───────────────────────────────────────────────────────────────────
@@ -1312,18 +1349,13 @@ function updateXPToggleBtn() {
     const btn = document.getElementById('xpToggleBtn');
     if (!btn) return;
     if (xpEnabled) {
-        btn.textContent = '⭐';
-        btn.title = 'XP: Bật — nhấn để tắt';
+        btn.textContent = '⭐ Tính điểm XP (Bật)';
         btn.style.color = 'var(--yellow)';
-        btn.style.opacity = '1';
     } else {
-        btn.textContent = '✩';
-        btn.title = 'XP: Tắt — nhấn để bật';
+        btn.textContent = '✩ Tính điểm XP (Tắt)';
         btn.style.color = 'var(--text3)';
-        btn.style.opacity = '0.55';
     }
 }
-
 // ─── XP / GAMIFICATION ───────────────────────────────────────────────────────
 const LEVELS = [
     {name:'Tân binh', min:0, icon:'⭐'},
@@ -1628,6 +1660,14 @@ function toggleSearch() {
     document.getElementById('searchResults').classList.toggle('open', searchOpen);
     if (searchOpen) { document.getElementById('searchInput').focus(); document.getElementById('searchInput').value = ''; doSearch(''); }
 }
+function toggleMoreMenu() {
+    document.getElementById('moreMenu').classList.toggle('open');
+}
+document.addEventListener('click', function(e) {
+    const menu = document.getElementById('moreMenu');
+    const btn = e.target.closest('[onclick="toggleMoreMenu()"]');
+    if (!menu.contains(e.target) && !btn) menu.classList.remove('open');
+});    
 function doSearch(q) {
     q = q.toLowerCase().trim();
     const res = q ? tasks.filter(t =>
