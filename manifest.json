@@ -1,7 +1,7 @@
 {
   "name": "TimeFlow",
   "short_name": "TimeFlow",
-  "start_url": "./index.html",
+  "start_url": "/ngocdiemevertu/HTMLPage.htm",
   "display": "standalone",
   "background_color": "#0a0f1e",
   "theme_color": "#638cff",
