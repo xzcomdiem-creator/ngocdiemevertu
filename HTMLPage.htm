@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#638cff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <title>TimeFlow v2 — Quản Lý Thời Gian</title>
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <style>
@@ -478,6 +481,7 @@
 @keyframes spin { to { transform: rotate(360deg) } }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <canvas id="particleCanvas"></canvas>
@@ -1004,6 +1008,58 @@ let selRingtone = localStorage.getItem('tf_ringtone') || 'classic';
 // XP / Gamification
 let xpData = JSON.parse(localStorage.getItem('tf_xp') || '{"xp":0,"streak":0,"lastCompletedDate":"","badges":[]}');
 let xpEnabled = localStorage.getItem('tf_xp_enabled') !== 'false'; // default ON
+  
+    // ─── SUPABASE CLOUD SYNC ─────────────────────────────────────────────────────
+const _sbc = supabase.createClient(
+  'https://ovsbkpfziksnyafaimre.supabase.co',
+  'sb_publishable_hCBJsoCrT_Koq2wSrL8C5A__CmVQyEq'
+);
+let _sbUserId = localStorage.getItem('tf_uid') || null;
+let _sbSyncTimer = null;
+
+(async function initSupabase() {
+  // Đăng nhập ẩn danh
+  let { data: { session } } = await _sbc.auth.getSession();
+  if (!session) {
+    const { data } = await _sbc.auth.signInAnonymously();
+    session = data.session;
+  }
+  if (session) {
+    _sbUserId = session.user.id;
+    localStorage.setItem('tf_uid', _sbUserId);
+    await _sbLoadFromCloud();
+  }
+})();
+
+async function _sbLoadFromCloud() {
+  try {
+    const { data } = await _sbc.from('userdata').select('*').eq('uid', _sbUserId).single();
+    if (data && data.updated > (parseInt(localStorage.getItem('tf_last_sync')) || 0)) {
+      tasks   = data.tasks   || tasks;
+      xpData  = data.xp      || xpData;
+      habits  = data.habits  || habits;
+      save(); saveXP(); saveHabits();
+      renderCurrent();
+      showToast('☁️ Đã đồng bộ dữ liệu!');
+    }
+  } catch(e) {}
+}
+
+async function _sbSyncToCloud() {
+  if (!_sbUserId) return;
+  const now = Date.now();
+  try {
+    await _sbc.from('userdata').upsert({
+      uid: _sbUserId, tasks, xp: xpData, habits, updated: now
+    }, { onConflict: 'uid' });
+    localStorage.setItem('tf_last_sync', now);
+  } catch(e) {}
+}
+
+function _sbScheduleSync() {
+  clearTimeout(_sbSyncTimer);
+  _sbSyncTimer = setTimeout(_sbSyncToCloud, 2000);
+}
 
 // ─── SEED DATA ───────────────────────────────────────────────────────────────
 const isFirstLaunch = !localStorage.getItem('tf_initialized');
@@ -1082,7 +1138,7 @@ function generateRecurringTasks() {
     if (added > 0) save();
 }
 
-function save() { localStorage.setItem('tf_tasks', JSON.stringify(tasks)); }
+function save() { localStorage.setItem('tf_tasks', JSON.stringify(tasks)); _sbScheduleSync(); }
 function saveXP() { localStorage.setItem('tf_xp', JSON.stringify(xpData)); }
 function todayStr() { return new Date().toISOString().split('T')[0]; }
 function getTodayTasks() { return tasks.filter(t => t.date === todayStr()).sort((a,b) => a.time.localeCompare(b.time)); }
@@ -2128,7 +2184,7 @@ let selHabitColor = '#34d399';
 let selHabitFreq = 'daily';
 const HABIT_ICONS = ['🌱','💧','📚','🏃','🧘','💊','🍎','😴','✍️','🎵','🏋️','🚶','🧹','💰','🙏','🌞','🥗','☕','🎯','🛁','🐾','📖','🧠','🌙'];
 const HABIT_COLORS = ['#34d399','#638cff','#f87171','#a78bfa','#fbbf24','#fb923c','#22d3ee','#f472b6'];
-function saveHabits() { localStorage.setItem('tf_habits', JSON.stringify(habits)); }
+function saveHabits() { localStorage.setItem('tf_habits', JSON.stringify(habits)); _sbScheduleSync(); }
 
 function openAddHabit() {
     habitEditId = null;
@@ -2417,6 +2473,9 @@ function addAllAITasks() {
 }
 // ─── INIT ────────────────────────────────────────────────────────────────────
 generateRecurringTasks();
+if ('serviceWorker' in navigator) {
+navigator.serviceWorker.register('./sw.js');
+}
 updateNotifBtn();
 updateXPToggleBtn();
 renderRingtoneRow();
