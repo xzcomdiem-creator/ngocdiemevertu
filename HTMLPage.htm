@@ -1126,27 +1126,7 @@ function _sbScheduleSync() {
   _sbSyncTimer = setTimeout(_sbSyncToCloud, 2000);
 }
 
-// ─── SEED DATA ───────────────────────────────────────────────────────────────
-const isFirstLaunch = !localStorage.getItem('tf_initialized');
-if (isFirstLaunch) {
-    localStorage.setItem('tf_initialized', '1');
-    const today = todayStr();
-    tasks = [
-        {id:1, title:'Kiểm tra email buổi sáng', note:'', date:today, time:'08:00', duration:30, deadline:'', cat:'work', pri:'high', rec:'none', done:false, ts:Date.now()},
-        {id:2, title:'Tập thể dục', note:'Chạy bộ 30 phút', date:today, time:'07:00', duration:45, deadline:'', cat:'health', pri:'med', rec:'daily', done:true, ts:Date.now()},
-        {id:3, title:'Đọc sách 30 phút', note:'', date:today, time:'21:00', duration:30, deadline:'', cat:'study', pri:'low', rec:'daily', done:false, ts:Date.now()},
-        {id:4, title:'Họp team dự án', note:'Phòng họp B2', date:today, time:'10:00', duration:60, deadline:'', cat:'work', pri:'high', rec:'none', done:false, ts:Date.now()},
-        {id:5, title:'Nấu ăn tối', note:'', date:today, time:'18:00', duration:45, deadline:'', cat:'personal', pri:'med', rec:'daily', done:false, ts:Date.now()},
-    ];
-    const d1 = new Date(); d1.setDate(d1.getDate()-1);
-    const d2 = new Date(); d2.setDate(d2.getDate()+1);
-    const d3 = new Date(); d3.setDate(d3.getDate()+2);
-   [d1,d2,d3].forEach((d,i) => {
-    const ds = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-    tasks.push({id:10+i, title:'Task ngày '+d.getDate()+'/'+(d.getMonth()+1), note:'', date:ds, time:'09:00', duration:60, deadline:'', cat:['work','personal','study'][i], pri:'med', rec:'none', done:i===0, ts:Date.now()});
-});
-save();
-}
+
 
 // ─── RECURRING TASK GENERATOR ────────────────────────────────────────────────
 function generateRecurringTasks() {
