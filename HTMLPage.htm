@@ -520,7 +520,7 @@
 @keyframes spin { to { transform: rotate(360deg) } }
     /* ─ MORE MENU ─ */
 .more-menu {
-    position: absolute;
+    position: fixed;
     top: 56px;
     right: 14px;
     background: var(--surface);
@@ -530,7 +530,7 @@
     display: none;
     flex-direction: column;
     gap: 2px;
-    z-index: 50;
+    z-index: 1000;
     min-width: 180px;
     box-shadow: 0 8px 24px rgba(0,0,0,.35);
 }
