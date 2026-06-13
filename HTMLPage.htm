@@ -567,7 +567,8 @@
     <button class="hbtn" onclick="toggleSearch()" title="Tìm kiếm">🔍</button>
     <button class="hbtn" onclick="openFocusTimer()" title="Pomodoro">🎯</button>
     <button class="hbtn" onclick="toggleNotifPermission()" id="notifBtn" title="Bật thông báo">🔔</button>
-    <button class="hbtn" onclick="toggleMoreMenu()" title="Thêm tùy chọn">⋯</button>
+<button class="hbtn" onclick="toggleMoreMenu()" title="Thêm tùy chọn">⋯</button>
+</div>
 </div>
 
 <!-- MORE MENU -->
@@ -578,8 +579,6 @@
     <button class="more-item" onclick="toggleTheme();toggleMoreMenu()" id="themeBtn">🌙 Đổi giao diện</button>
     <button class="more-item" onclick="openExport();toggleMoreMenu()">📤 Export / Import</button>
 </div>
-</div>
-
 <!-- SEARCH BAR -->
 <div class="search-bar" id="searchBar">
     <input class="search-input" id="searchInput" placeholder="Tìm kiếm task..." oninput="doSearch(this.value)" type="search">
@@ -1661,13 +1660,30 @@ function toggleSearch() {
     if (searchOpen) { document.getElementById('searchInput').focus(); document.getElementById('searchInput').value = ''; doSearch(''); }
 }
 function toggleMoreMenu() {
-    document.getElementById('moreMenu').classList.toggle('open');
+    const menu = document.getElementById('moreMenu');
+    if (menu.style.display === 'flex') {
+        menu.style.display = 'none';
+    } else {
+        menu.style.display = 'flex';
+        menu.style.flexDirection = 'column';
+        menu.style.position = 'fixed';
+        menu.style.top = '56px';
+        menu.style.right = '14px';
+        menu.style.zIndex = '9999';
+        menu.style.background = 'var(--surface)';
+        menu.style.border = '1px solid var(--border2)';
+        menu.style.borderRadius = '14px';
+        menu.style.padding = '6px';
+        menu.style.gap = '2px';
+        menu.style.minWidth = '180px';
+        menu.style.boxShadow = '0 8px 24px rgba(0,0,0,.5)';
+    }
 }
 document.addEventListener('click', function(e) {
     const menu = document.getElementById('moreMenu');
     const btn = e.target.closest('[onclick="toggleMoreMenu()"]');
-    if (!menu.contains(e.target) && !btn) menu.classList.remove('open');
-});    
+    if (!menu.contains(e.target) && !btn) menu.style.display = 'none';
+}); 
 function doSearch(q) {
     q = q.toLowerCase().trim();
     const res = q ? tasks.filter(t =>
