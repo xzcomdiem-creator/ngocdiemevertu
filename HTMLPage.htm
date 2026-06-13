@@ -423,6 +423,50 @@
 
         /* ─ SWIPE HINT ─ */
         .swipe-hint { font-size:10px; color:var(--text3); text-align:center; padding:4px 0 8px; opacity:.6 }
+        /* ─ HABIT TRACKER ─ */
+.habit-card { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); padding:13px 14px; margin-bottom:10px }
+.habit-header { display:flex; align-items:center; gap:10px; margin-bottom:10px }
+.habit-icon { font-size:22px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; border-radius:9px; flex-shrink:0 }
+.habit-info { flex:1; min-width:0 }
+.habit-name { font-size:14px; font-weight:700; color:var(--text) }
+.habit-meta { font-size:11px; color:var(--text3); margin-top:2px }
+.habit-streak-badge { font-size:11px; font-weight:700; color:var(--orange); background:var(--orange-soft); border:1px solid rgba(251,146,60,0.3); padding:3px 9px; border-radius:10px; font-family:'JetBrains Mono',monospace }
+.habit-actions { display:flex; gap:4px }
+.habit-btn { width:26px; height:26px; border-radius:6px; background:none; border:1px solid var(--border); color:var(--text3); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center }
+.habit-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; margin-bottom:8px }
+.habit-day-label { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; margin-bottom:4px }
+.habit-dl { font-size:8px; color:var(--text3); text-align:center; font-weight:700; text-transform:uppercase }
+.habit-cell { aspect-ratio:1; border-radius:4px; cursor:pointer; transition:all .2s; border:1.5px solid transparent; display:flex; align-items:center; justify-content:center; font-size:10px }
+.habit-cell.empty { background:var(--bg3); opacity:.3; pointer-events:none }
+.habit-cell.missed { background:var(--bg3); border-color:var(--border) }
+.habit-cell.done-full { border-color:transparent }
+.habit-cell.today-cell { border-color:var(--accent) !important }
+.habit-cell:not(.empty):active { transform:scale(.88) }
+.habit-prog-bar { height:5px; background:var(--bg3); border-radius:3px; overflow:hidden; margin-top:4px }
+.habit-prog-fill { height:5px; border-radius:3px; transition:width .5s }
+.habit-rate { font-size:10px; color:var(--text3); margin-top:4px; display:flex; justify-content:space-between }
+.habit-add-sheet .form-group { margin-bottom:11px }
+.habit-icon-grid { display:grid; grid-template-columns:repeat(8,1fr); gap:5px; margin-bottom:6px }
+.habit-icon-opt { aspect-ratio:1; border-radius:7px; background:var(--surface); border:1.5px solid transparent; font-size:17px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .2s }
+.habit-icon-opt.sel { border-color:var(--accent); background:var(--accent-glow) }
+.habit-freq-row { display:flex; gap:6px }
+.habit-freq-opt { flex:1; padding:8px 6px; border-radius:var(--radius-sm); font-size:12px; font-weight:700; cursor:pointer; border:1.5px solid var(--border); text-align:center; transition:all .2s; background:var(--surface); color:var(--text2); font-family:inherit }
+.habit-freq-opt.sel { background:var(--accent-glow); border-color:var(--accent); color:var(--accent) }
+.habit-color-row { display:flex; gap:7px; flex-wrap:wrap }
+.habit-color-opt { width:26px; height:26px; border-radius:50%; cursor:pointer; border:2.5px solid transparent; transition:all .2s }
+.habit-color-opt.sel { border-color:#fff; transform:scale(1.18) }
+        /* ─ SUBTASKS ─ */
+.subtask-list { margin-top:8px; display:flex; flex-direction:column; gap:4px }
+.subtask-item { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--text2) }
+.subtask-check { width:15px; height:15px; min-width:15px; border-radius:4px; border:1.5px solid var(--border2); display:flex; align-items:center; justify-content:center; font-size:9px; cursor:pointer; transition:all .2s; flex-shrink:0 }
+.subtask-check.done { background:var(--green); border-color:var(--green); color:#fff }
+.subtask-text { flex:1; line-height:1.3 }
+.subtask-text.done { text-decoration:line-through; opacity:.5 }
+.subtask-add-row { display:flex; gap:6px; margin-top:6px }
+.subtask-input { flex:1; background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:6px 9px; font-size:12px; color:var(--text); outline:none; font-family:inherit }
+.subtask-input:focus { border-color:var(--accent) }
+.subtask-add-btn { padding:6px 10px; border-radius:6px; background:var(--accent-glow); border:1px solid var(--accent); color:var(--accent); font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap }
+.subtask-progress { font-size:10px; color:var(--text3); font-family:'JetBrains Mono',monospace; margin-top:3px }
     </style>
 </head>
 <body>
@@ -456,6 +500,7 @@
     <button class="tab" onclick="goTab(1)" id="tab1"><span class="tab-icon">📅</span>Tháng</button>
     <button class="tab" onclick="goTab(2)" id="tab2"><span class="tab-icon">🗓</span>Năm</button>
     <button class="tab" onclick="goTab(3)" id="tab3"><span class="tab-icon">📊</span>Thống kê</button>
+    <button class="tab" onclick="goTab(4)" id="tab4"><span class="tab-icon">🌱</span>Thói quen</button>
 </div>
 
 <div class="screens">
@@ -464,6 +509,7 @@
         <div class="search-result-count" id="searchCount">0 kết quả</div>
         <div id="searchList"></div>
         <div class="bottom-space"></div>
+        
     </div>
 
     <!-- TODAY -->
@@ -558,9 +604,22 @@
             <div class="wc-title" style="margin-bottom:10px">Theo danh mục</div>
             <div id="catBreakdown"></div>
         </div>
+       <div class="bottom-space"></div>
+    </div>
+
+    <!-- HABITS -->
+    <div class="screen" id="screen4">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div style="font-size:16px;font-weight:800;color:var(--text)">Thói quen của tôi</div>
+            <button class="hbtn-add" onclick="openAddHabit()" style="width:32px;height:32px;font-size:16px">＋</button>
+        </div>
+        <div id="habitList"></div>
         <div class="bottom-space"></div>
     </div>
+
 </div>
+
+<!-- ADD / EDIT TASK -->
 
 <!-- ADD / EDIT TASK -->
 <div class="overlay" id="ovAdd" onclick="if(event.target===this)closeOverlay('ovAdd')">
@@ -575,6 +634,14 @@
             <label class="form-label">Ghi chú</label>
             <textarea class="form-input form-textarea" id="fNote" placeholder="Mô tả thêm..."></textarea>
         </div>
+        <div class="form-group">
+    <label class="form-label">Checklist</label>
+    <div id="fSubtaskList" style="display:flex;flex-direction:column;gap:5px;margin-bottom:6px"></div>
+    <div class="subtask-add-row">
+        <input class="subtask-input" id="fSubtaskInput" placeholder="Thêm mục checklist..." type="text" onkeydown="if(event.key==='Enter'){event.preventDefault();addSubtaskField()}">
+        <button class="subtask-add-btn" onclick="addSubtaskField()">＋ Thêm</button>
+    </div>
+</div>
         <div class="form-row">
             <div class="form-group">
                 <label class="form-label">Ngày</label>
@@ -731,7 +798,34 @@
         <div class="cat-list-manage" id="catManageList"></div>
     </div>
 </div>
-
+<!-- ADD HABIT -->
+<div class="overlay" id="ovHabit" onclick="if(event.target===this)closeOverlay('ovHabit')">
+    <div class="sheet habit-add-sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title" id="habitSheetTitle">Thêm thói quen mới</div>
+        <div class="form-group">
+            <label class="form-label">Tên thói quen *</label>
+            <input class="form-input" id="hName" placeholder="VD: Uống nước, Đọc sách..." type="text" maxlength="40">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Icon</label>
+            <div class="habit-icon-grid" id="habitIconGrid"></div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Màu sắc</label>
+            <div class="habit-color-row" id="habitColorRow"></div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Tần suất</label>
+            <div class="habit-freq-row">
+                <button class="habit-freq-opt sel" data-freq="daily" onclick="pickHabitFreq(this)">Hàng ngày</button>
+                <button class="habit-freq-opt" data-freq="3x" onclick="pickHabitFreq(this)">3x/tuần</button>
+                <button class="habit-freq-opt" data-freq="weekly" onclick="pickHabitFreq(this)">Hàng tuần</button>
+            </div>
+        </div>
+        <button class="submit-btn" onclick="saveHabit()">✓ Lưu thói quen</button>
+    </div>
+</div>
 <!-- TOAST -->
 <div class="toast" id="toast">⭐ <span id="toastMsg"></span></div>
 
@@ -1267,6 +1361,7 @@ function showAlarmOverlay(task) {
             #alarmRingIcon { animation:ringPulse .6s ease-in-out infinite }
             #alarmBar { height:4px;border-radius:2px;background:linear-gradient(90deg,var(--accent),var(--purple));width:100%;animation:alarmBarDrain 60s linear forwards }
             @keyframes alarmBarDrain { from{width:100%} to{width:0%} }
+        
         </style>
         <div id="alarmRingIcon" style="font-size:64px">⏰</div>
         <div style="font-size:14px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:1px">Đến giờ!</div>
@@ -1423,11 +1518,13 @@ function goTab(i) {
     if(i===1) renderMonth();
     if(i===2) renderYear();
     if(i===3) renderStats();
+    if(i===4) renderHabits();
 }
 function renderCurrent() {
     if(currentTab===0) renderToday();
     if(currentTab===1) { renderMonth(); if(selectedCalDay) showCalDayTasks(selectedCalDay); }
     if(currentTab===3) renderStats();
+    if(currentTab===4) renderHabits();
     if (searchOpen) doSearch(document.getElementById('searchInput').value);
 }
 
@@ -1557,6 +1654,7 @@ function makeTaskCard(t) {
         +(t.deadline?'<span class="task-time">📅 '+t.deadline+'</span>':'')
         +'</div>'
         +(t.note?'<div style="font-size:11px;color:var(--text3);margin-top:4px">'+escHtml(t.note)+'</div>':'')
+             +(t.subtasks && t.subtasks.length ? renderSubtasksMini(t) : '')
         +'</div>'
         +'<div class="task-actions">'
         +'<button class="task-btn" onclick="event.stopPropagation();openEdit('+t.id+')" title="Sửa">✏️</button>'
@@ -1743,6 +1841,8 @@ function openAdd() {
     document.getElementById('fDeadline').value='';
     selCat='work'; selPri='med'; selRec='none';
     renderCatSelect(); applyPriUI(); applyRecUI(); renderRingtoneRow();
+    formSubtasks = [];
+    renderFormSubtasks();
     document.getElementById('ovAdd').classList.add('open');
     setTimeout(() => document.getElementById('fTitle').focus(), 350);
 }
@@ -1760,6 +1860,8 @@ function openEdit(id) {
     document.getElementById('fDeadline').value=t.deadline||'';
     selCat=t.cat; selPri=t.pri; selRec=t.rec||'none';
     renderCatSelect(); applyPriUI(); applyRecUI(); renderRingtoneRow();
+    formSubtasks = (t.subtasks || []).map(s => ({...s}));
+    renderFormSubtasks();
     document.getElementById('ovAdd').classList.add('open');
 }
 function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
@@ -1787,6 +1889,7 @@ function saveTask() {
     const title = document.getElementById('fTitle').value.trim();
     if (!title) { document.getElementById('fTitle').focus(); return; }
     const data = {
+        subtasks: formSubtasks,
         title,
         note: document.getElementById('fNote').value.trim(),
         date: document.getElementById('fDate').value || todayStr(),
@@ -1980,7 +2083,203 @@ function updateFocusDisplay(){
     document.getElementById('focusTimeDisplay').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
     document.getElementById('focusRing').style.strokeDashoffset=439.8*(1-(focusLeft/focusTotal));
 }
+// ─── HABITS ──────────────────────────────────────────────────────────────────
+let habits = JSON.parse(localStorage.getItem('tf_habits') || '[]');
+let habitEditId = null;
+let selHabitIcon = '🌱';
+let selHabitColor = '#34d399';
+let selHabitFreq = 'daily';
+const HABIT_ICONS = ['🌱','💧','📚','🏃','🧘','💊','🍎','😴','✍️','🎵','🏋️','🚶','🧹','💰','🙏','🌞','🥗','☕','🎯','🛁','🐾','📖','🧠','🌙'];
+const HABIT_COLORS = ['#34d399','#638cff','#f87171','#a78bfa','#fbbf24','#fb923c','#22d3ee','#f472b6'];
+function saveHabits() { localStorage.setItem('tf_habits', JSON.stringify(habits)); }
 
+function openAddHabit() {
+    habitEditId = null;
+    document.getElementById('habitSheetTitle').textContent = 'Thêm thói quen mới';
+    document.getElementById('hName').value = '';
+    selHabitIcon = HABIT_ICONS[0]; selHabitColor = HABIT_COLORS[0]; selHabitFreq = 'daily';
+    renderHabitIconGrid(); renderHabitColorRow(); applyHabitFreqUI();
+    document.getElementById('ovHabit').classList.add('open');
+    setTimeout(() => document.getElementById('hName').focus(), 350);
+}
+function renderHabitIconGrid() {
+    const g = document.getElementById('habitIconGrid');
+    if (!g) return;
+    g.innerHTML = '';
+    HABIT_ICONS.forEach(ic => {
+        const d = document.createElement('div');
+        d.className = 'habit-icon-opt' + (ic === selHabitIcon ? ' sel' : '');
+        d.textContent = ic;
+        d.onclick = () => { selHabitIcon = ic; renderHabitIconGrid(); };
+        g.appendChild(d);
+    });
+}
+function renderHabitColorRow() {
+    const g = document.getElementById('habitColorRow');
+    if (!g) return;
+    g.innerHTML = '';
+    HABIT_COLORS.forEach(c => {
+        const d = document.createElement('div');
+        d.className = 'habit-color-opt' + (c === selHabitColor ? ' sel' : '');
+        d.style.background = c;
+        d.onclick = () => { selHabitColor = c; renderHabitColorRow(); };
+        g.appendChild(d);
+    });
+}
+function pickHabitFreq(el) {
+    selHabitFreq = el.dataset.freq;
+    applyHabitFreqUI();
+}
+function applyHabitFreqUI() {
+    document.querySelectorAll('.habit-freq-opt').forEach(e => e.classList.remove('sel'));
+    const el = document.querySelector('.habit-freq-opt[data-freq="'+selHabitFreq+'"]');
+    if (el) el.classList.add('sel');
+}
+function saveHabit() {
+    const name = document.getElementById('hName').value.trim();
+    if (!name) { document.getElementById('hName').focus(); return; }
+    if (habitEditId !== null) {
+        const h = habits.find(x => x.id === habitEditId);
+        if (h) { h.name = name; h.icon = selHabitIcon; h.color = selHabitColor; h.freq = selHabitFreq; }
+        showToast('Đã cập nhật thói quen!');
+    } else {
+        habits.push({ id: Date.now(), name, icon: selHabitIcon, color: selHabitColor, freq: selHabitFreq, logs: {} });
+        showToast('Đã thêm thói quen mới! 🌱');
+    }
+    saveHabits(); closeOverlay('ovHabit'); renderHabits();
+}
+function deleteHabit(id) {
+    habits = habits.filter(h => h.id !== id);
+    saveHabits(); renderHabits();
+    showToast('Đã xóa thói quen');
+}
+function editHabit(id) {
+    const h = habits.find(x => x.id === id);
+    if (!h) return;
+    habitEditId = id;
+    document.getElementById('habitSheetTitle').textContent = 'Sửa thói quen';
+    document.getElementById('hName').value = h.name;
+    selHabitIcon = h.icon; selHabitColor = h.color; selHabitFreq = h.freq || 'daily';
+    renderHabitIconGrid(); renderHabitColorRow(); applyHabitFreqUI();
+    document.getElementById('ovHabit').classList.add('open');
+}
+function toggleHabitDay(habitId, dateStr) {
+    const h = habits.find(x => x.id === habitId);
+    if (!h) return;
+    if (!h.logs) h.logs = {};
+    h.logs[dateStr] = !h.logs[dateStr];
+    saveHabits(); renderHabits();
+}
+function getHabitStreak(h) {
+    let streak = 0;
+    const today = new Date();
+    for (let i = 0; i < 365; i++) {
+        const d = new Date(today); d.setDate(d.getDate() - i);
+        const ds = d.toISOString().split('T')[0];
+        if (h.logs && h.logs[ds]) streak++;
+        else if (i > 0) break;
+    }
+    return streak;
+}
+function renderHabits() {
+    const list = document.getElementById('habitList');
+    if (!list) return;
+    if (!habits.length) {
+        list.innerHTML = '<div class="empty-state"><div class="empty-icon">🌱</div><div class="empty-text">Chưa có thói quen nào.<br>Nhấn + để bắt đầu xây dựng thói quen!</div></div>';
+        return;
+    }
+    const now = new Date();
+    const todayStr2 = now.toISOString().split('T')[0];
+    const weekDays = ['CN','T2','T3','T4','T5','T6','T7'];
+    list.innerHTML = '';
+    habits.forEach(h => {
+        const cells = [];
+        for (let i = 27; i >= 0; i--) {
+            const d = new Date(now); d.setDate(d.getDate() - i);
+            const ds = d.toISOString().split('T')[0];
+            const isFuture = i < 0;
+            cells.push({ ds, isDone: !!(h.logs && h.logs[ds]), isToday: ds === todayStr2, isFuture });
+        }
+        const totalDone = cells.filter(c => c.isDone).length;
+        const possible = cells.filter(c => !c.isFuture).length;
+        const rate = possible ? Math.round(totalDone / possible * 100) : 0;
+        const streak = getHabitStreak(h);
+        const startDow = new Date(now); startDow.setDate(startDow.getDate() - 27);
+        let labelsHtml = '<div class="habit-day-label">';
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(startDow); d.setDate(d.getDate() + i);
+            labelsHtml += `<div class="habit-dl">${weekDays[d.getDay()]}</div>`;
+        }
+        labelsHtml += '</div>';
+        let gridHtml = '<div class="habit-grid">';
+        cells.forEach(c => {
+            let cls = 'habit-cell' + (c.isDone ? ' done-full' : ' missed') + (c.isToday ? ' today-cell' : '');
+            gridHtml += `<div class="${cls}" style="${c.isDone ? 'background:'+h.color+';' : ''}" onclick="toggleHabitDay(${h.id},'${c.ds}')">${c.isDone ? '✓' : ''}</div>`;
+        });
+        gridHtml += '</div>';
+        const card = document.createElement('div');
+        card.className = 'habit-card';
+        card.innerHTML = `
+            <div class="habit-header">
+                <div class="habit-icon" style="background:${h.color}22">${h.icon}</div>
+                <div class="habit-info">
+                    <div class="habit-name">${escHtml(h.name)}</div>
+                    <div class="habit-meta">${h.freq === 'daily' ? 'Hàng ngày' : h.freq === '3x' ? '3x/tuần' : 'Hàng tuần'} · ${rate}% hoàn thành</div>
+                </div>
+                ${streak > 0 ? `<div class="habit-streak-badge">🔥 ${streak}</div>` : ''}
+                <div class="habit-actions">
+                    <button class="habit-btn" onclick="editHabit(${h.id})">✏️</button>
+                    <button class="habit-btn" onclick="deleteHabit(${h.id})" style="background:var(--red-soft);border-color:var(--red);color:var(--red)">🗑️</button>
+                </div>
+            </div>
+            ${labelsHtml}
+            ${gridHtml}
+            <div class="habit-prog-bar"><div class="habit-prog-fill" style="width:${rate}%;background:${h.color}"></div></div>
+            <div class="habit-rate"><span>${totalDone}/28 ngày hoàn thành</span><span style="color:${h.color};font-weight:700">${rate}%</span></div>`;
+        list.appendChild(card);
+    });
+}
+
+// ─── SUBTASKS ────────────────────────────────────────────────────────────────
+let formSubtasks = [];
+function renderFormSubtasks() {
+    const list = document.getElementById('fSubtaskList');
+    if (!list) return;
+    list.innerHTML = '';
+    formSubtasks.forEach((s, i) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;gap:6px;align-items:center';
+        row.innerHTML = `<div class="subtask-check ${s.done?'done':''}" onclick="formSubtasks[${i}].done=!formSubtasks[${i}].done;renderFormSubtasks()">${s.done?'✓':''}</div>
+            <input class="subtask-input" value="${escHtml(s.text)}" oninput="formSubtasks[${i}].text=this.value" placeholder="Mục checklist...">
+            <button class="subtask-add-btn" style="background:var(--red-soft);border-color:var(--red);color:var(--red)" onclick="formSubtasks.splice(${i},1);renderFormSubtasks()">✕</button>`;
+        list.appendChild(row);
+    });
+}
+function addSubtaskField() {
+    const inp = document.getElementById('fSubtaskInput');
+    formSubtasks.push({ text: inp ? inp.value.trim() : '', done: false });
+    if (inp) inp.value = '';
+    renderFormSubtasks();
+    setTimeout(() => { if (inp) inp.focus(); }, 50);
+}
+function renderSubtasksMini(t) {
+    if (!t.subtasks || !t.subtasks.length) return '';
+    const done = t.subtasks.filter(s=>s.done).length;
+    const items = t.subtasks.map((s,i) =>
+        `<div class="subtask-item">
+            <div class="subtask-check ${s.done?'done':''}" onclick="event.stopPropagation();toggleSubtask(${t.id},${i})">${s.done?'✓':''}</div>
+            <span class="subtask-text ${s.done?'done':''}">${escHtml(s.text)}</span>
+        </div>`
+    ).join('');
+    return `<div class="subtask-list">${items}</div>
+        <div class="subtask-progress">${done}/${t.subtasks.length} mục hoàn thành</div>`;
+}
+function toggleSubtask(taskId, idx) {
+    const t = tasks.find(x => x.id === taskId);
+    if (!t || !t.subtasks) return;
+    t.subtasks[idx].done = !t.subtasks[idx].done;
+    save(); renderCurrent();
+}
 // ─── INIT ────────────────────────────────────────────────────────────────────
 generateRecurringTasks();
 updateNotifBtn();
