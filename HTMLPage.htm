@@ -1414,19 +1414,27 @@ function updateNotifBtn() {
 }
 
 async function toggleNotifPermission() {
-    if (notifPermission === 'denied') { showToast('Thông báo bị chặn — vào Settings trình duyệt để bật lại', 'warning'); return; }
-    if (!('Notification' in window)) { showToast('Thiết bị này không hỗ trợ thông báo', 'warning'); return; }
+    if (!('Notification' in window)) {
+        showToast('Thiết bị này không hỗ trợ thông báo', 'warning');
+        return;
+    }
+    if (notifPermission === 'denied') {
+        showToast('Thông báo bị chặn — vào Settings trình duyệt để bật lại', 'warning');
+        return;
+    }
+    if (notifPermission === 'granted') {
+        showToast('🔔 Thông báo đã được bật rồi!');
+        return;
+    }
     try {
-        const granted = await Promise.race([
-            requestNotifPermission(),
-            new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000))
-        ]);
-        if (granted) showToast('🔔 Đã bật thông báo!');
-        else showToast('Không thể bật thông báo', 'warning');
-    } catch (e) {
-        notifPermission = Notification.permission;
+        const result = await Notification.requestPermission();
+        notifPermission = result;
         updateNotifBtn();
-        showToast('Yêu cầu quá lâu — thử lại sau', 'warning');
+        if (result === 'granted') showToast('🔔 Đã bật thông báo thành công!');
+        else if (result === 'denied') showToast('Đã từ chối thông báo', 'warning');
+        else showToast('Chưa cấp quyền thông báo', 'warning');
+    } catch (e) {
+        showToast('Lỗi khi xin quyền thông báo', 'warning');
     }
 }
 
