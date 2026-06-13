@@ -1225,7 +1225,13 @@ function updateClock() {
     const days = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
     const hh = String(now.getHours()).padStart(2,'0');
     const mm = String(now.getMinutes()).padStart(2,'0');
-    document.getElementById('headerDate').textContent = hh+':'+mm+' | '+days[now.getDay()]+' '+now.getDate()+'/'+(now.getMonth()+1);
+    // Dùng todayStr() để lấy ngày đúng theo múi giờ local
+    const today = todayStr();
+    const parts = today.split('-');
+    const day = parseInt(parts[2]);
+    const month = parseInt(parts[1]);
+    document.getElementById('headerDate').textContent = 
+        hh+':'+mm+' | '+days[now.getDay()]+' '+day+'/'+month;
 }
 setInterval(updateClock, 1000);
     // Auto tạo task khi sang ngày mới
