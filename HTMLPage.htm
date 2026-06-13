@@ -1230,10 +1230,14 @@ function showToast(msg, type='success') {
     const el = document.getElementById('toast');
     const msgEl = document.getElementById('toastMsg');
     msgEl.textContent = msg;
-    el.className = 'toast ' + type;
-    el.classList.add('show');
+    el.className = 'toast';
+    if (type) el.classList.add(type);
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.classList.remove('show'), 100);
+    void el.offsetWidth; // force reflow
+    el.classList.add('show');
+    toastTimer = setTimeout(() => {
+        el.classList.remove('show');
+    }, 2800);
 }
 
 // ─── MORNING GREETING ────────────────────────────────────────────────────────
