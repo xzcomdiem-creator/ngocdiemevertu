@@ -1627,7 +1627,7 @@ function doSearch(q) {
 // ─── EXPORT / IMPORT ─────────────────────────────────────────────────────────
 function openExport() { document.getElementById('ovExport').classList.add('open'); }
 function exportJSON() {
-    const data = { tasks, xp: xpData, exported: new Date().toISOString() };
+    const data = { tasks, xp: xpData, templates, exported: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1657,6 +1657,7 @@ function handleImport(event) {
             if (data.tasks && Array.isArray(data.tasks)) {
                 tasks = data.tasks;
                 if (data.xp) xpData = data.xp;
+                if (data.templates) { templates = data.templates; saveTemplates(); }
                 save(); saveXP(); renderCurrent();
                 showToast('Import thành công! '+tasks.length+' task');
                 closeOverlay('ovExport');
@@ -1791,8 +1792,10 @@ function makeTaskCard(t) {
     const div = document.createElement('div');
     const catDef = getCatDef(t.cat);
     const isCustom = t.cat.startsWith('custom_');
-    div.className = 'task-card' + (isCustom ? '' : ' cat-'+t.cat) + (t.done?' done':'');
+    const hasCustomColor = !!t.color;
+    div.className = 'task-card' + (isCustom ? '' : ' cat-'+t.cat) + (t.done?' done':'') + (hasCustomColor?' has-custom-color':'');
     if (isCustom) div.style.setProperty('--custom-cat-color', catDef.color);
+    if (hasCustomColor) div.style.setProperty('--custom-task-color', t.color);
     div.dataset.id = t.id;
     div.draggable = true;
     const priIcon = t.pri==='high'?'🔴':t.pri==='med'?'🟡':'🟢';
@@ -1811,6 +1814,9 @@ function makeTaskCard(t) {
         +'<span class="task-pri">'+priIcon+recIcon+'</span>'
         +(xpEnabled && !t.done ? '<span class="task-pts">+'+pts+' XP</span>' : '')
         +(t.deadline?'<span class="task-time">📅 '+t.deadline+'</span>':'')
+        +(t.voice ? '<span class="task-voice-indicator" onclick="event.stopPropagation();toggleVoicePlay('+t.id+')" title="Nghe ghi âm">🎙️ '+(t.voice.duration||0)+'s</span>' : '')
+
+        
         +'</div>'
         +(t.note?'<div class="note-rendered">'+marked.parse(t.note)+'</div>':'')
              +(t.subtasks && t.subtasks.length ? renderSubtasksMini(t) : '')
