@@ -1130,7 +1130,7 @@ function _sbScheduleSync() {
 const isFirstLaunch = !localStorage.getItem('tf_initialized');
 if (isFirstLaunch) {
     localStorage.setItem('tf_initialized', '1');
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayStr();
     tasks = [
         {id:1, title:'Kiểm tra email buổi sáng', note:'', date:today, time:'08:00', duration:30, deadline:'', cat:'work', pri:'high', rec:'none', done:false, ts:Date.now()},
         {id:2, title:'Tập thể dục', note:'Chạy bộ 30 phút', date:today, time:'07:00', duration:45, deadline:'', cat:'health', pri:'med', rec:'daily', done:true, ts:Date.now()},
@@ -1141,10 +1141,11 @@ if (isFirstLaunch) {
     const d1 = new Date(); d1.setDate(d1.getDate()-1);
     const d2 = new Date(); d2.setDate(d2.getDate()+1);
     const d3 = new Date(); d3.setDate(d3.getDate()+2);
-    [d1,d2,d3].forEach((d,i) => {
-        tasks.push({id:10+i, title:'Task ngày '+d.getDate()+'/'+(d.getMonth()+1), note:'', date:d.toISOString().split('T')[0], time:'09:00', duration:60, deadline:'', cat:['work','personal','study'][i], pri:'med', rec:'none', done:i===0, ts:Date.now()});
-    });
-    save();
+   [d1,d2,d3].forEach((d,i) => {
+    const ds = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    tasks.push({id:10+i, title:'Task ngày '+d.getDate()+'/'+(d.getMonth()+1), note:'', date:ds, time:'09:00', duration:60, deadline:'', cat:['work','personal','study'][i], pri:'med', rec:'none', done:i===0, ts:Date.now()});
+});
+save();
 }
 
 // ─── RECURRING TASK GENERATOR ────────────────────────────────────────────────
@@ -1206,7 +1207,12 @@ function generateRecurringTasks() {
 function save() { localStorage.setItem('tf_tasks', JSON.stringify(tasks)); _sbScheduleSync(); }
 function saveXP() { localStorage.setItem('tf_xp', JSON.stringify(xpData)); }
     function saveTemplates() { localStorage.setItem('tf_templates', JSON.stringify(templates)); }
-function todayStr() { return new Date().toISOString().split('T')[0]; }
+function todayStr() {
+const d = new Date();
+return d.getFullYear() + '-' +
+String(d.getMonth() + 1).padStart(2, '0') + '-' +
+String(d.getDate()).padStart(2, '0');
+}
 function getTodayTasks() { return tasks.filter(t => t.date === todayStr()).sort((a,b) => a.time.localeCompare(b.time)); }
 function getTasksForDate(d) { return tasks.filter(t => t.date === d); }
 function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -1253,7 +1259,8 @@ function showToast(msg, type='success') {
     el.className = 'toast';
     if (type) el.classList.add(type);
     clearTimeout(toastTimer);
-    void el.offsetWidth;
+    el.classList.remove('show');
+    void el.offsetWidth; // force reflow để reset animation
     el.classList.add('show');
     toastTimer = setTimeout(() => {
         el.classList.remove('show');
@@ -1291,8 +1298,10 @@ function updateStreak() {
     const todayTasks = getTodayTasks();
     const allDone = todayTasks.length > 0 && todayTasks.every(t => t.done);
     if (allDone && xpData.lastCompletedDate !== today) {
-        const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
-        const yStr = yesterday.toISOString().split('T')[0];
+       const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
+        const yStr = yesterday.getFullYear() + '-' +
+        String(yesterday.getMonth() + 1).padStart(2, '0') + '-' +
+        String(yesterday.getDate()).padStart(2, '0');
         xpData.streak = (xpData.lastCompletedDate === yStr) ? xpData.streak + 1 : 1;
         xpData.lastCompletedDate = today;
         saveXP();
@@ -2206,8 +2215,7 @@ function renderStats() {
     const weekData=[];
     for(let i=6;i>=0;i--){
         const d=new Date(now); d.setDate(d.getDate()-i);
-        const ds=d.toISOString().split('T')[0];
-        const dt=tasks.filter(t=>t.date===ds);
+const ds = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');        const dt=tasks.filter(t=>t.date===ds);
         weekData.push({day:dayNames[d.getDay()],total:dt.length,done:dt.filter(t=>t.done).length,isToday:i===0});
     }
     const maxT=Math.max(...weekData.map(w=>w.total),1);
@@ -2366,7 +2374,7 @@ function getHabitStreak(h) {
     const today = new Date();
     for (let i = 0; i < 365; i++) {
         const d = new Date(today); d.setDate(d.getDate() - i);
-        const ds = d.toISOString().split('T')[0];
+const ds = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
         if (h.logs && h.logs[ds]) streak++;
         else if (i > 0) break;
     }
@@ -2380,14 +2388,14 @@ function renderHabits() {
         return;
     }
     const now = new Date();
-    const todayStr2 = now.toISOString().split('T')[0];
+    const todayStr2 = todayStr();
     const weekDays = ['CN','T2','T3','T4','T5','T6','T7'];
     list.innerHTML = '';
     habits.forEach(h => {
         const cells = [];
-        for (let i = 27; i >= 0; i--) {
-            const d = new Date(now); d.setDate(d.getDate() - i);
-            const ds = d.toISOString().split('T')[0];
+       for (let i = 27; i >= 0; i--) {
+    const d = new Date(now); d.setDate(d.getDate() - i);
+    const ds = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
             const isFuture = i < 0;
             cells.push({ ds, isDone: !!(h.logs && h.logs[ds]), isToday: ds === todayStr2, isFuture });
         }
