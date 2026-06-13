@@ -458,6 +458,35 @@
 .habit-color-row { display:flex; gap:7px; flex-wrap:wrap }
 .habit-color-opt { width:26px; height:26px; border-radius:50%; cursor:pointer; border:2.5px solid transparent; transition:all .2s }
 .habit-color-opt.sel { border-color:#fff; transform:scale(1.18) }
+        /* ─ VOICE NOTE ─ */
+.voice-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+.voice-rec-btn { padding:9px 14px; border-radius:var(--radius-sm); border:1.5px solid var(--border2); background:var(--surface); color:var(--text2); font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; display:flex; align-items:center; gap:6px; transition:all .2s }
+.voice-rec-btn.recording { border-color:var(--red); background:var(--red-soft); color:var(--red); animation: recPulse 1s infinite }
+@keyframes recPulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+.voice-player { display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 12px; flex:1; min-width:160px }
+.voice-play-btn { width:28px; height:28px; border-radius:50%; background:var(--accent-glow); color:var(--accent); border:none; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0 }
+.voice-dur { font-size:11px; color:var(--text2); font-family:'JetBrains Mono',monospace; flex:1 }
+.voice-del-btn { font-size:13px; color:var(--text3); cursor:pointer; flex-shrink:0 }
+.task-voice-indicator { font-size:11px; cursor:pointer }
+
+/* ─ TASK COLOR PICKER ─ */
+.taskcolor-grid { display:flex; gap:8px; flex-wrap:wrap; align-items:center }
+.taskcolor-opt { width:26px; height:26px; border-radius:50%; cursor:pointer; border:2.5px solid transparent; transition:all .2s; flex-shrink:0 }
+.taskcolor-opt.sel { border-color:#fff; transform:scale(1.15) }
+.taskcolor-opt.none-opt { background:var(--surface2); border:1.5px dashed var(--border2); display:flex; align-items:center; justify-content:center; font-size:12px; color:var(--text3) }
+.taskcolor-opt.none-opt.sel { border-color:var(--accent); border-style:solid; color:var(--accent) }
+.task-card.has-custom-color::before { background:var(--custom-task-color, var(--accent)) !important }
+
+/* ─ TEMPLATES ─ */
+.template-list { display:flex; flex-direction:column; gap:6px; margin-bottom:14px }
+.template-item { display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:10px 12px; cursor:pointer; transition:all .2s }
+.template-item:active { transform:scale(.98) }
+.template-icon { font-size:18px; flex-shrink:0 }
+.template-body { flex:1; min-width:0 }
+.template-name { font-size:13px; font-weight:700; color:var(--text) }
+.template-sub { font-size:11px; color:var(--text3); margin-top:1px }
+.template-del { width:26px; height:26px; border-radius:6px; background:var(--red-soft); border:1px solid var(--red); color:var(--red); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0 }
+.submit-btn.secondary { background:var(--surface2); border:1px solid var(--border); color:var(--text2) }
         /* ─ SUBTASKS ─ */
 .subtask-list { margin-top:8px; display:flex; flex-direction:column; gap:4px }
 .subtask-item { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--text2) }
@@ -499,6 +528,7 @@
         <button class="hbtn" onclick="toggleNotifPermission()" id="notifBtn" title="Bật thông báo">🔔</button>
         <button class="hbtn" onclick="toggleXP()" id="xpToggleBtn" title="Bật/tắt tính điểm XP">⭐</button>
         <button class="hbtn" onclick="openAISuggest()" title="AI tạo task">✨</button>
+        <button class="hbtn" onclick="openTemplates()" title="Mẫu task">📑</button>
         <button class="hbtn" onclick="toggleTheme()" id="themeBtn" title="Đổi theme">🌙</button>
         <button class="hbtn" onclick="openExport()" title="Export">📤</button>
     </div>
@@ -682,6 +712,10 @@
             <div class="cat-select" id="catSelectWrap"></div>
         </div>
         <div class="form-group">
+            <label class="form-label">Màu riêng cho task</label>
+            <div class="taskcolor-grid" id="taskColorGrid"></div>
+        </div>
+        <div class="form-group">
             <label class="form-label">Ưu tiên</label>
             <div class="pri-select">
                 <div class="pri-opt p-high" data-pri="high" onclick="pickPri(this)">🔴 Cao</div>
@@ -698,9 +732,16 @@
                 <div class="rec-opt" data-rec="monthly" onclick="pickRec(this)">Hàng tháng</div>
             </div>
         </div>
+        <div class="form-group">
+            <label class="form-label">Ghi chú giọng nói</label>
+            <div class="voice-row" id="voiceRow"></div>
+        </div>
         <div class="form-group" id="ringtoneGroup">
             <label class="form-label">Nhạc báo thức</label>
             <div class="ringtone-row" id="ringtoneRow"></div>
+        </div>
+        <div class="form-group">
+            <button class="submit-btn secondary" onclick="saveAsTemplate()">📑 Lưu làm mẫu task</button>
         </div>
         <button class="submit-btn" id="submitBtn" onclick="saveTask()">✓ Lưu task</button>
     </div>
@@ -867,6 +908,16 @@
     <div id="aiError" style="display:none;background:var(--red-soft);border:1px solid var(--red);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:var(--red);margin-top:10px"></div>
   </div>
 </div>
+    <!-- TEMPLATES -->
+<div class="overlay" id="ovTemplates" onclick="if(event.target===this)closeOverlay('ovTemplates')">
+    <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">📑 Mẫu task</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Chọn mẫu để tạo task nhanh, hoặc lưu mẫu mới từ màn hình thêm task.</div>
+        <div class="template-list" id="templateListWrap"></div>
+        <div class="bottom-space"></div>
+    </div>
+</div>
 <!-- TOAST -->
 <div class="toast" id="toast">⭐ <span id="toastMsg"></span></div>
 
@@ -970,6 +1021,10 @@ function initSwipe(card, taskId) {
 // ─── STATE ───────────────────────────────────────────────────────────────────
 let tasks = JSON.parse(localStorage.getItem('tf_tasks') || '[]');
 let selCat = 'work', selPri = 'med', selRec = 'none';
+    let selTaskColor = '';
+let formVoiceNote = null;
+let templates = JSON.parse(localStorage.getItem('tf_templates') || '[]');
+const TASK_COLORS = ['#638cff','#34d399','#f87171','#a78bfa','#fbbf24','#fb923c','#22d3ee','#f472b6','#4ade80','#facc15','#e879f9','#38bdf8','#94a3b8','#fff'];
 let calViewDate = new Date();
 let yearView = new Date().getFullYear();
 let selectedCalDay = null;
@@ -1140,6 +1195,7 @@ function generateRecurringTasks() {
 
 function save() { localStorage.setItem('tf_tasks', JSON.stringify(tasks)); _sbScheduleSync(); }
 function saveXP() { localStorage.setItem('tf_xp', JSON.stringify(xpData)); }
+    function saveTemplates() { localStorage.setItem('tf_templates', JSON.stringify(templates)); }
 function todayStr() { return new Date().toISOString().split('T')[0]; }
 function getTodayTasks() { return tasks.filter(t => t.date === todayStr()).sort((a,b) => a.time.localeCompare(b.time)); }
 function getTasksForDate(d) { return tasks.filter(t => t.date === d); }
@@ -1326,9 +1382,19 @@ function updateNotifBtn() {
 
 async function toggleNotifPermission() {
     if (notifPermission === 'denied') { showToast('Thông báo bị chặn — vào Settings trình duyệt để bật lại', 'warning'); return; }
-    const granted = await requestNotifPermission();
-    if (granted) showToast('🔔 Đã bật thông báo!');
-    else showToast('Không thể bật thông báo', 'warning');
+    if (!('Notification' in window)) { showToast('Thiết bị này không hỗ trợ thông báo', 'warning'); return; }
+    try {
+        const granted = await Promise.race([
+            requestNotifPermission(),
+            new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000))
+        ]);
+        if (granted) showToast('🔔 Đã bật thông báo!');
+        else showToast('Không thể bật thông báo', 'warning');
+    } catch (e) {
+        notifPermission = Notification.permission;
+        updateNotifBtn();
+        showToast('Yêu cầu quá lâu — thử lại sau', 'warning');
+    }
 }
 
 // ─── ALARM SOUND ENGINE ──────────────────────────────────────────────────────
@@ -1932,8 +1998,8 @@ function openAdd() {
     document.getElementById('fTime').value='';
     document.getElementById('fDuration').value='60';
     document.getElementById('fDeadline').value='';
-    selCat='work'; selPri='med'; selRec='none';
-    renderCatSelect(); applyPriUI(); applyRecUI(); renderRingtoneRow();
+    selCat='work'; selPri='med'; selRec='none'; selTaskColor=''; formVoiceNote=null;
+    renderCatSelect(); applyPriUI(); applyRecUI(); renderRingtoneRow(); renderTaskColorGrid(); renderVoiceRow();
     formSubtasks = [];
     renderFormSubtasks();
     document.getElementById('ovAdd').classList.add('open');
@@ -1951,8 +2017,8 @@ function openEdit(id) {
     document.getElementById('fTime').value=t.time||'';
     document.getElementById('fDuration').value=t.duration||60;
     document.getElementById('fDeadline').value=t.deadline||'';
-    selCat=t.cat; selPri=t.pri; selRec=t.rec||'none';
-    renderCatSelect(); applyPriUI(); applyRecUI(); renderRingtoneRow();
+    selCat=t.cat; selPri=t.pri; selRec=t.rec||'none'; selTaskColor=t.color||''; formVoiceNote=t.voice?{...t.voice}:null;
+    renderCatSelect(); applyPriUI(); applyRecUI(); renderRingtoneRow(); renderTaskColorGrid(); renderVoiceRow();
     formSubtasks = (t.subtasks || []).map(s => ({...s}));
     renderFormSubtasks();
     document.getElementById('ovAdd').classList.add('open');
@@ -1981,7 +2047,7 @@ function pickRec(el) {
 function saveTask() {
     const title = document.getElementById('fTitle').value.trim();
     if (!title) { document.getElementById('fTitle').focus(); return; }
-    const data = {
+   const data = {
         subtasks: formSubtasks,
         title,
         note: document.getElementById('fNote').value.trim(),
@@ -1989,7 +2055,9 @@ function saveTask() {
         time: document.getElementById('fTime').value,
         duration: parseInt(document.getElementById('fDuration').value) || 0,
         deadline: document.getElementById('fDeadline').value,
-        cat: selCat, pri: selPri, rec: selRec
+        cat: selCat, pri: selPri, rec: selRec,
+        color: selTaskColor,
+        voice: formVoiceNote
     };
     if (editingId !== null) {
         const idx = tasks.findIndex(x => x.id===editingId);
@@ -2472,6 +2540,177 @@ function addAllAITasks() {
   showToast(`✨ Đã thêm ${count} task từ AI!`);
 }
 // ─── INIT ────────────────────────────────────────────────────────────────────
+    // ─── TASK COLOR PICKER ───────────────────────────────────────────────────────
+function renderTaskColorGrid() {
+    const wrap = document.getElementById('taskColorGrid');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    const noneOpt = document.createElement('div');
+    noneOpt.className = 'taskcolor-opt none-opt' + (selTaskColor === '' ? ' sel' : '');
+    noneOpt.textContent = '✕';
+    noneOpt.title = 'Không dùng màu riêng';
+    noneOpt.onclick = () => { selTaskColor = ''; renderTaskColorGrid(); };
+    wrap.appendChild(noneOpt);
+    TASK_COLORS.forEach(c => {
+        const el = document.createElement('div');
+        el.className = 'taskcolor-opt' + (selTaskColor === c ? ' sel' : '');
+        el.style.background = c;
+        if (c === '#fff') el.style.border = selTaskColor===c ? '2.5px solid var(--accent)' : '1.5px solid var(--border2)';
+        el.onclick = () => { selTaskColor = c; renderTaskColorGrid(); };
+        wrap.appendChild(el);
+    });
+}
+
+// ─── VOICE NOTES ─────────────────────────────────────────────────────────────
+let mediaRecorder = null;
+let recordedChunks = [];
+let recordStartTime = 0;
+let recordTimerInterval = null;
+let currentAudioPlayer = null;
+
+function renderVoiceRow() {
+    const wrap = document.getElementById('voiceRow');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    if (formVoiceNote) {
+        const player = document.createElement('div');
+        player.className = 'voice-player';
+        player.innerHTML = `<button class="voice-play-btn" onclick="playFormVoice()">▶</button>
+            <span class="voice-dur">🎙️ Ghi âm — ${formVoiceNote.duration}s</span>
+            <span class="voice-del-btn" onclick="deleteFormVoice()">✕</span>`;
+        wrap.appendChild(player);
+    } else {
+        const btn = document.createElement('button');
+        btn.className = 'voice-rec-btn';
+        btn.id = 'voiceRecBtn';
+        btn.innerHTML = '🎙️ Ghi âm ghi chú';
+        btn.onclick = toggleVoiceRecording;
+        wrap.appendChild(btn);
+    }
+}
+
+async function toggleVoiceRecording() {
+    const btn = document.getElementById('voiceRecBtn');
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        return;
+    }
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        recordedChunks = [];
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+        mediaRecorder.onstop = () => {
+            clearInterval(recordTimerInterval);
+            const duration = Math.max(1, Math.round((Date.now() - recordStartTime) / 1000));
+            const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+            const reader = new FileReader();
+            reader.onload = () => {
+                formVoiceNote = { dataUrl: reader.result, duration };
+                renderVoiceRow();
+                showToast('🎙️ Đã ghi âm ' + duration + 's');
+            };
+            reader.readAsDataURL(blob);
+            stream.getTracks().forEach(t => t.stop());
+        };
+        mediaRecorder.start();
+        recordStartTime = Date.now();
+        if (btn) { btn.classList.add('recording'); btn.innerHTML = '⏹️ Đang ghi... 0s'; }
+        recordTimerInterval = setInterval(() => {
+            const sec = Math.round((Date.now() - recordStartTime) / 1000);
+            if (btn) btn.innerHTML = '⏹️ Đang ghi... ' + sec + 's';
+            if (sec >= 120) mediaRecorder.stop();
+        }, 1000);
+    } catch (e) {
+        showToast('Không thể truy cập micro!', 'warning');
+    }
+}
+
+function playFormVoice() {
+    if (!formVoiceNote) return;
+    if (currentAudioPlayer) { currentAudioPlayer.pause(); }
+    currentAudioPlayer = new Audio(formVoiceNote.dataUrl);
+    currentAudioPlayer.play();
+}
+
+function deleteFormVoice() {
+    formVoiceNote = null;
+    renderVoiceRow();
+}
+
+function toggleVoicePlay(taskId) {
+    const t = tasks.find(x => x.id === taskId);
+    if (!t || !t.voice) return;
+    if (currentAudioPlayer) { currentAudioPlayer.pause(); }
+    currentAudioPlayer = new Audio(t.voice.dataUrl);
+    currentAudioPlayer.play();
+    showToast('🎙️ Đang phát ghi âm...');
+}
+
+// ─── TEMPLATES ───────────────────────────────────────────────────────────────
+function openTemplates() {
+    renderTemplateList();
+    document.getElementById('ovTemplates').classList.add('open');
+}
+function renderTemplateList() {
+    const wrap = document.getElementById('templateListWrap');
+    if (!templates.length) {
+        wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">📑</div><div class="empty-text">Chưa có mẫu task nào.<br>Lưu mẫu từ màn hình thêm task!</div></div>';
+        return;
+    }
+    wrap.innerHTML = '';
+    templates.forEach(tpl => {
+        const el = document.createElement('div');
+        el.className = 'template-item';
+        const subInfo = (tpl.subtasks && tpl.subtasks.length) ? ' · '+tpl.subtasks.length+' mục nhỏ' : '';
+        el.innerHTML = `<div class="template-icon">${tpl.icon || '📑'}</div>
+            <div class="template-body">
+                <div class="template-name">${escHtml(tpl.name)}</div>
+                <div class="template-sub">${escHtml(tpl.title)} · ${getCatLabel(tpl.cat)}${tpl.time?' · '+tpl.time:''}${subInfo}</div>
+            </div>
+            <button class="template-del" onclick="event.stopPropagation();deleteTemplate('${tpl.id}')">✕</button>`;
+        el.onclick = (e) => { if (e.target.closest('.template-del')) return; useTemplate(tpl); };
+        wrap.appendChild(el);
+    });
+}
+function useTemplate(tpl) {
+    closeOverlay('ovTemplates');
+    openAdd();
+    document.getElementById('fTitle').value = tpl.title;
+    document.getElementById('fNote').value = tpl.note || '';
+    document.getElementById('fTime').value = tpl.time || '';
+    document.getElementById('fDuration').value = tpl.duration || 60;
+    selCat = tpl.cat; selPri = tpl.pri; selRec = tpl.rec || 'none';
+    selTaskColor = tpl.color || '';
+    formSubtasks = (tpl.subtasks || []).map(s => ({ text: s.text, done: false }));
+    renderCatSelect(); applyPriUI(); applyRecUI(); renderTaskColorGrid(); renderFormSubtasks();
+    showToast('📑 Đã áp dụng mẫu "' + tpl.name + '"');
+}
+function deleteTemplate(id) {
+    templates = templates.filter(t => t.id !== id);
+    saveTemplates();
+    renderTemplateList();
+    showToast('Đã xóa mẫu');
+}
+function saveAsTemplate() {
+    const title = document.getElementById('fTitle').value.trim();
+    if (!title) { document.getElementById('fTitle').focus(); showToast('Nhập tiêu đề trước khi lưu mẫu!', 'warning'); return; }
+    const name = title.length > 18 ? title.substring(0,18)+'…' : title;
+    const tpl = {
+        id: 'tpl' + Date.now(),
+        name,
+        icon: getCatDef(selCat).icon,
+        title,
+        note: document.getElementById('fNote').value.trim(),
+        time: document.getElementById('fTime').value,
+        duration: parseInt(document.getElementById('fDuration').value) || 0,
+        cat: selCat, pri: selPri, rec: selRec, color: selTaskColor,
+        subtasks: formSubtasks.filter(s=>s.text && s.text.trim()).map(s => ({ text: s.text }))
+    };
+    templates.push(tpl);
+    saveTemplates();
+    showToast('📑 Đã lưu mẫu "' + name + '"');
+}
 generateRecurringTasks();
 if ('serviceWorker' in navigator) {
 navigator.serviceWorker.register('./sw.js');
