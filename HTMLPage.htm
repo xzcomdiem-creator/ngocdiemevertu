@@ -1233,7 +1233,7 @@ function showToast(msg, type='success') {
     el.className = 'toast';
     if (type) el.classList.add(type);
     clearTimeout(toastTimer);
-    void el.offsetWidth; // force reflow
+    void el.offsetWidth;
     el.classList.add('show');
     toastTimer = setTimeout(() => {
         el.classList.remove('show');
