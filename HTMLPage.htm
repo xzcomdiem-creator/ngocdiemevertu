@@ -1220,6 +1220,16 @@ function updateClock() {
     document.getElementById('headerDate').textContent = hh+':'+mm+' | '+days[now.getDay()]+' '+now.getDate()+'/'+(now.getMonth()+1);
 }
 setInterval(updateClock, 1000);
+    // Auto tạo task khi sang ngày mới
+let _lastDateCheck = todayStr();
+setInterval(() => {
+    const today = todayStr();
+    if (today !== _lastDateCheck) {
+        _lastDateCheck = today;
+        generateRecurringTasks();
+        renderCurrent();
+    }
+}, 60000); // kiểm tra mỗi phút
 updateClock();
 
 // ─── THEME ───────────────────────────────────────────────────────────────────
