@@ -467,7 +467,17 @@
 .subtask-input:focus { border-color:var(--accent) }
 .subtask-add-btn { padding:6px 10px; border-radius:6px; background:var(--accent-glow); border:1px solid var(--accent); color:var(--accent); font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap }
 .subtask-progress { font-size:10px; color:var(--text3); font-family:'JetBrains Mono',monospace; margin-top:3px }
+        .note-rendered { font-size:12px; color:var(--text2); margin-top:5px; line-height:1.6 }
+.note-rendered p { margin:0 0 4px }
+.note-rendered strong { color:var(--text); font-weight:700 }
+.note-rendered em { font-style:italic }
+.note-rendered ul { padding-left:14px; margin:2px 0 }
+.note-rendered li { margin-bottom:2px }
+.note-rendered a { color:var(--accent); text-decoration:none }
+.note-rendered code { background:var(--bg3); border-radius:4px; padding:1px 5px; font-family:'JetBrains Mono',monospace; font-size:11px }
+@keyframes spin { to { transform: rotate(360deg) } }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 </head>
 <body>
 <canvas id="particleCanvas"></canvas>
@@ -484,6 +494,7 @@
         <button class="hbtn" onclick="openFocusTimer()" title="Pomodoro">🎯</button>
         <button class="hbtn" onclick="toggleNotifPermission()" id="notifBtn" title="Bật thông báo">🔔</button>
         <button class="hbtn" onclick="toggleXP()" id="xpToggleBtn" title="Bật/tắt tính điểm XP">⭐</button>
+        <button class="hbtn" onclick="openAISuggest()" title="AI tạo task">✨</button>
         <button class="hbtn" onclick="toggleTheme()" id="themeBtn" title="Đổi theme">🌙</button>
         <button class="hbtn" onclick="openExport()" title="Export">📤</button>
     </div>
@@ -825,6 +836,32 @@
         </div>
         <button class="submit-btn" onclick="saveHabit()">✓ Lưu thói quen</button>
     </div>
+</div>
+    <!-- AI SUGGEST -->
+<div class="overlay" id="ovAI" onclick="if(event.target===this)closeOverlay('ovAI')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">✨ AI Breakdown Task</div>
+    <div class="form-group">
+      <label class="form-label">Mô tả dự án / mục tiêu của bạn</label>
+      <textarea class="form-input form-textarea" id="aiPromptInput" placeholder="VD: Tôi cần chuẩn bị thuyết trình cho khách hàng vào thứ 6..." style="min-height:90px"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Ngày bắt đầu</label>
+      <input class="form-input" id="aiDateInput" type="date">
+    </div>
+    <button class="submit-btn" id="aiGenerateBtn" onclick="runAISuggest()">✨ Tạo danh sách task</button>
+    <div id="aiResultWrap" style="margin-top:14px;display:none">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">Kết quả gợi ý</div>
+      <div id="aiResultList"></div>
+      <button class="submit-btn" onclick="addAllAITasks()" style="margin-top:10px;background:linear-gradient(135deg,var(--green),var(--accent))">＋ Thêm tất cả vào danh sách</button>
+    </div>
+    <div id="aiLoading" style="display:none;text-align:center;padding:24px 0">
+      <div style="font-size:28px;animation:spin 1s linear infinite;display:inline-block">⚙️</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:8px">Claude đang phân tích...</div>
+    </div>
+    <div id="aiError" style="display:none;background:var(--red-soft);border:1px solid var(--red);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:var(--red);margin-top:10px"></div>
+  </div>
 </div>
 <!-- TOAST -->
 <div class="toast" id="toast">⭐ <span id="toastMsg"></span></div>
@@ -1653,7 +1690,7 @@ function makeTaskCard(t) {
         +(xpEnabled && !t.done ? '<span class="task-pts">+'+pts+' XP</span>' : '')
         +(t.deadline?'<span class="task-time">📅 '+t.deadline+'</span>':'')
         +'</div>'
-        +(t.note?'<div style="font-size:11px;color:var(--text3);margin-top:4px">'+escHtml(t.note)+'</div>':'')
+        +(t.note?'<div class="note-rendered">'+marked.parse(t.note)+'</div>':'')
              +(t.subtasks && t.subtasks.length ? renderSubtasksMini(t) : '')
         +'</div>'
         +'<div class="task-actions">'
@@ -2279,6 +2316,104 @@ function toggleSubtask(taskId, idx) {
     if (!t || !t.subtasks) return;
     t.subtasks[idx].done = !t.subtasks[idx].done;
     save(); renderCurrent();
+}
+    // ─── AI SUGGEST ──────────────────────────────────────────────────────────────
+let aiSuggestedTasks = [];
+
+function openAISuggest() {
+  document.getElementById('aiPromptInput').value = '';
+  document.getElementById('aiDateInput').value = todayStr();
+  document.getElementById('aiResultWrap').style.display = 'none';
+  document.getElementById('aiLoading').style.display = 'none';
+  document.getElementById('aiError').style.display = 'none';
+  document.getElementById('aiResultList').innerHTML = '';
+  aiSuggestedTasks = [];
+  document.getElementById('ovAI').classList.add('open');
+  setTimeout(() => document.getElementById('aiPromptInput').focus(), 350);
+}
+
+async function runAISuggest() {
+  const prompt = document.getElementById('aiPromptInput').value.trim();
+  if (!prompt) { document.getElementById('aiPromptInput').focus(); return; }
+  const startDate = document.getElementById('aiDateInput').value || todayStr();
+
+  document.getElementById('aiLoading').style.display = 'block';
+  document.getElementById('aiResultWrap').style.display = 'none';
+  document.getElementById('aiError').style.display = 'none';
+  document.getElementById('aiGenerateBtn').disabled = true;
+
+  const systemPrompt = `Bạn là trợ lý quản lý thời gian thông minh. Người dùng mô tả một dự án hoặc mục tiêu. Hãy breakdown thành danh sách task cụ thể.
+Trả về ĐÚNG định dạng JSON sau, không thêm bất kỳ text nào khác:
+{"tasks":[{"title":"tên task","time":"HH:MM","duration":60,"cat":"work|personal|health|study|other","pri":"high|med|low","note":"ghi chú ngắn"}]}
+Quy tắc:
+- 3 đến 8 task, thực tế và có thể thực hiện được
+- time theo 24h, phân bổ hợp lý trong ngày (8:00 - 21:00)
+- duration tính bằng phút
+- cat chọn phù hợp nhất
+- note ngắn gọn bằng tiếng Việt, có thể dùng markdown (bold, bullet)`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: `Dự án: ${prompt}\nNgày bắt đầu: ${startDate}` }]
+      })
+    });
+    const data = await res.json();
+    const raw = data.content?.map(b => b.text || '').join('').trim();
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    aiSuggestedTasks = parsed.tasks.map((t, i) => ({
+      ...t, date: startDate, rec: 'none', done: false, id: Date.now() + i, ts: Date.now()
+    }));
+    renderAIResults();
+    document.getElementById('aiResultWrap').style.display = 'block';
+  } catch (e) {
+    const errEl = document.getElementById('aiError');
+    errEl.textContent = 'Lỗi: ' + (e.message || 'Không thể kết nối AI. Thử lại sau.');
+    errEl.style.display = 'block';
+  } finally {
+    document.getElementById('aiLoading').style.display = 'none';
+    document.getElementById('aiGenerateBtn').disabled = false;
+  }
+}
+
+function renderAIResults() {
+  const list = document.getElementById('aiResultList');
+  const catColors = { work:'var(--accent)', personal:'var(--green)', health:'var(--red)', study:'var(--purple)', other:'var(--yellow)' };
+  const priIcon = { high:'🔴', med:'🟡', low:'🟢' };
+  list.innerHTML = '';
+  aiSuggestedTasks.forEach((t, i) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:7px;display:flex;gap:10px;align-items:flex-start';
+    div.innerHTML = `
+      <input type="checkbox" checked style="margin-top:3px;accent-color:var(--accent);width:16px;height:16px;flex-shrink:0" id="aiChk_${i}">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">${escHtml(t.title)}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;align-items:center">
+          <span style="font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace">⏰ ${t.time} (${t.duration}p)</span>
+          <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:${catColors[t.cat]}22;color:${catColors[t.cat]}">${getCatLabel(t.cat)}</span>
+          <span style="font-size:11px">${priIcon[t.pri]}</span>
+        </div>
+        ${t.note ? '<div class="note-rendered" style="margin-top:5px">'+marked.parse(t.note)+'</div>' : ''}
+      </div>`;
+    list.appendChild(div);
+  });
+}
+
+function addAllAITasks() {
+  let count = 0;
+  aiSuggestedTasks.forEach((t, i) => {
+    const chk = document.getElementById('aiChk_' + i);
+    if (chk && chk.checked) { tasks.push(t); count++; }
+  });
+  if (!count) { showToast('Chưa chọn task nào!', 'warning'); return; }
+  save(); closeOverlay('ovAI'); renderCurrent();
+  showToast(`✨ Đã thêm ${count} task từ AI!`);
 }
 // ─── INIT ────────────────────────────────────────────────────────────────────
 generateRecurringTasks();
