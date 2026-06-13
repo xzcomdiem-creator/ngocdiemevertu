@@ -71,11 +71,13 @@
         [data-theme="light"] #particleCanvas { opacity: .25; }
 
         /* Ensure content is above background */
-        .header, .tabs, .screens, .search-bar,
-        .overlay, .confirm-overlay, .newcat-overlay, .toast {
-            position: relative;
-            z-index: 1;
-        }
+  /* Ensure content is above background */
+.header, .tabs, .screens, .search-bar,
+.overlay, .confirm-overlay, .newcat-overlay, .toast,
+.more-menu {
+    position: relative;
+    z-index: 1;
+}
 
         /* SKELETON */
         .skeleton {
