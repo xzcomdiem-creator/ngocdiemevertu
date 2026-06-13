@@ -1142,7 +1142,9 @@ if (isFirstLaunch) {
     const d2 = new Date(); d2.setDate(d2.getDate()+1);
     const d3 = new Date(); d3.setDate(d3.getDate()+2);
    [d1,d2,d3].forEach((d,i) => {
-    const ds = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    const _off = d.getTimezoneOffset();
+    const _loc = new Date(d.getTime() - _off * 60000);
+    const ds = _loc.toISOString().slice(0, 10);
     tasks.push({id:10+i, title:'Task ngày '+d.getDate()+'/'+(d.getMonth()+1), note:'', date:ds, time:'09:00', duration:60, deadline:'', cat:['work','personal','study'][i], pri:'med', rec:'none', done:i===0, ts:Date.now()});
 });
 save();
@@ -1208,10 +1210,10 @@ function save() { localStorage.setItem('tf_tasks', JSON.stringify(tasks)); _sbSc
 function saveXP() { localStorage.setItem('tf_xp', JSON.stringify(xpData)); }
     function saveTemplates() { localStorage.setItem('tf_templates', JSON.stringify(templates)); }
 function todayStr() {
-const d = new Date();
-return d.getFullYear() + '-' +
-String(d.getMonth() + 1).padStart(2, '0') + '-' +
-String(d.getDate()).padStart(2, '0');
+    const d = new Date();
+    const offset = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - offset * 60000);
+    return local.toISOString().slice(0, 10);
 }
 function getTodayTasks() { return tasks.filter(t => t.date === todayStr()).sort((a,b) => a.time.localeCompare(b.time)); }
 function getTasksForDate(d) { return tasks.filter(t => t.date === d); }
@@ -1298,10 +1300,10 @@ function updateStreak() {
     const todayTasks = getTodayTasks();
     const allDone = todayTasks.length > 0 && todayTasks.every(t => t.done);
     if (allDone && xpData.lastCompletedDate !== today) {
-       const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
-        const yStr = yesterday.getFullYear() + '-' +
-        String(yesterday.getMonth() + 1).padStart(2, '0') + '-' +
-        String(yesterday.getDate()).padStart(2, '0');
+        const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
+        const yOffset = yesterday.getTimezoneOffset();
+        const yLocal = new Date(yesterday.getTime() - yOffset * 60000);
+        const yStr = yLocal.toISOString().slice(0, 10);
         xpData.streak = (xpData.lastCompletedDate === yStr) ? xpData.streak + 1 : 1;
         xpData.lastCompletedDate = today;
         saveXP();
