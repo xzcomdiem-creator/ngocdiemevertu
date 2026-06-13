@@ -2502,7 +2502,7 @@ Quy tắc:
 - cat chọn phù hợp nhất
 - note ngắn gọn bằng tiếng Việt, có thể dùng markdown (bold, bullet)`;
 
-  try {
+ try {
     const res = await fetch('https://timeflow.xzcomdiem.workers.dev', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2514,7 +2514,11 @@ Quy tắc:
       })
     });
     const data = await res.json();
-    const raw = data.content?.map(b => b.text || '').join('').trim();
+    console.log('AI response:', JSON.stringify(data));
+    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+    if (!data.content || !data.content.length) throw new Error('Không có nội dung: ' + JSON.stringify(data));
+    const raw = data.content.map(b => b.text || '').join('').trim();
+    if (!raw) throw new Error('Phản hồi rỗng');
     const clean = raw.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
     aiSuggestedTasks = parsed.tasks.map((t, i) => ({
