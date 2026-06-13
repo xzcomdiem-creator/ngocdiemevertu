@@ -98,23 +98,6 @@
         .skeleton-block.med   { width: 65%; }
         .skeleton-block.long  { width: 90%; }
 
-        /* CONFETTI */
-        .confetti-piece {
-            position: fixed;
-            width: 8px;
-            height: 8px;
-            border-radius: 2px;
-            top: -10px;
-            pointer-events: none;
-            z-index: 500;
-            animation: confettiFall linear forwards;
-        }
-        @keyframes confettiFall {
-            0%   { transform: translateY(0)    rotate(0deg)   scaleX(1); opacity: 1; }
-            80%  { opacity: 1; }
-            100% { transform: translateY(100vh) rotate(720deg) scaleX(.4); opacity: 0; }
-        }
-
         /* ─ HEADER ─ */
         .header { flex-shrink:0; background:rgba(10,15,30,0.9); backdrop-filter:blur(16px); border-bottom:1px solid var(--border); padding:0 14px; display:flex; align-items:center; justify-content:space-between; height:54px; gap:8px }
         [data-theme="light"] .header { background:rgba(240,244,255,0.95) }
@@ -456,6 +439,7 @@
         <button class="hbtn" onclick="toggleSearch()" title="Tìm kiếm">🔍</button>
         <button class="hbtn" onclick="openFocusTimer()" title="Pomodoro">🎯</button>
         <button class="hbtn" onclick="toggleNotifPermission()" id="notifBtn" title="Bật thông báo">🔔</button>
+        <button class="hbtn" onclick="toggleXP()" id="xpToggleBtn" title="Bật/tắt tính điểm XP">⭐</button>
         <button class="hbtn" onclick="toggleTheme()" id="themeBtn" title="Đổi theme">🌙</button>
         <button class="hbtn" onclick="openExport()" title="Export">📤</button>
     </div>
@@ -749,7 +733,7 @@
 </div>
 
 <!-- TOAST -->
-<div class="toast" id="toast">🎉 <span id="toastMsg"></span></div>
+<div class="toast" id="toast">⭐ <span id="toastMsg"></span></div>
 
 <script>
 // ─── PARTICLE ENGINE ────────────────────────────────────────────────────────
@@ -848,26 +832,6 @@ function initSwipe(card, taskId) {
     card.addEventListener('touchend',    onEnd);
 }
 
-// ─── CONFETTI ────────────────────────────────────────────────────────────────
-function launchConfetti() {
-    const colors = ['#638cff','#a78bfa','#34d399','#fbbf24','#f87171','#fb923c','#fff'];
-    for (let i = 0; i < 90; i++) {
-        const el = document.createElement('div');
-        el.className = 'confetti-piece';
-        el.style.cssText = `
-            left: ${Math.random() * 100}vw;
-            background: ${colors[Math.floor(Math.random() * colors.length)]};
-            width: ${Math.random() * 7 + 5}px;
-            height: ${Math.random() * 7 + 5}px;
-            border-radius: ${Math.random() > .5 ? '50%' : '2px'};
-            animation-duration: ${Math.random() * 1.8 + 1.4}s;
-            animation-delay: ${Math.random() * .8}s;
-        `;
-        document.body.appendChild(el);
-        el.addEventListener('animationend', () => el.remove());
-    }
-}
-
 // ─── STATE ───────────────────────────────────────────────────────────────────
 let tasks = JSON.parse(localStorage.getItem('tf_tasks') || '[]');
 let selCat = 'work', selPri = 'med', selRec = 'none';
@@ -908,6 +872,7 @@ let selRingtone = localStorage.getItem('tf_ringtone') || 'classic';
 
 // XP / Gamification
 let xpData = JSON.parse(localStorage.getItem('tf_xp') || '{"xp":0,"streak":0,"lastCompletedDate":"","badges":[]}');
+let xpEnabled = localStorage.getItem('tf_xp_enabled') !== 'false'; // default ON
 
 // ─── SEED DATA ───────────────────────────────────────────────────────────────
 const isFirstLaunch = !localStorage.getItem('tf_initialized');
@@ -1079,6 +1044,30 @@ function updateStreak() {
     }
 }
 
+// ─── XP TOGGLE ───────────────────────────────────────────────────────────────
+function toggleXP() {
+    xpEnabled = !xpEnabled;
+    localStorage.setItem('tf_xp_enabled', xpEnabled ? 'true' : 'false');
+    updateXPToggleBtn();
+    renderCurrent();
+    showToast(xpEnabled ? '⭐ Tính điểm XP đã bật' : '✩ Tính điểm XP đã tắt', xpEnabled ? 'success' : 'warning');
+}
+function updateXPToggleBtn() {
+    const btn = document.getElementById('xpToggleBtn');
+    if (!btn) return;
+    if (xpEnabled) {
+        btn.textContent = '⭐';
+        btn.title = 'XP: Bật — nhấn để tắt';
+        btn.style.color = 'var(--yellow)';
+        btn.style.opacity = '1';
+    } else {
+        btn.textContent = '✩';
+        btn.title = 'XP: Tắt — nhấn để bật';
+        btn.style.color = 'var(--text3)';
+        btn.style.opacity = '0.55';
+    }
+}
+
 // ─── XP / GAMIFICATION ───────────────────────────────────────────────────────
 const LEVELS = [
     {name:'Tân binh', min:0, icon:'⭐'},
@@ -1103,6 +1092,7 @@ function getCurrentLevel() {
     return 0;
 }
 function awardXP(task) {
+    if (!xpEnabled) return;
     const pts = getXPForTask(task);
     xpData.xp += pts;
     checkBadges();
@@ -1443,7 +1433,6 @@ function renderCurrent() {
 
 // ─── TODAY ───────────────────────────────────────────────────────────────────
 function renderToday() {
-    // Skeleton flash on first load
     const list = document.getElementById('todayList');
     if (!list.children.length) {
         list.innerHTML = [1,2,3].map(() => `<div class="skeleton skeleton-card"></div>`).join('');
@@ -1564,7 +1553,7 @@ function makeTaskCard(t) {
         +(t.time?'<span class="task-time">⏰ '+t.time+(t.duration?' ('+t.duration+'p)':'')+'</span>':'')
         +'<span class="task-tag" style="background:'+catDef.color+'22;color:'+catDef.color+'">'+getCatLabel(t.cat)+'</span>'
         +'<span class="task-pri">'+priIcon+recIcon+'</span>'
-        +(t.done?'':'<span class="task-pts">+'+pts+' XP</span>')
+        +(xpEnabled && !t.done ? '<span class="task-pts">+'+pts+' XP</span>' : '')
         +(t.deadline?'<span class="task-time">📅 '+t.deadline+'</span>':'')
         +'</div>'
         +(t.note?'<div style="font-size:11px;color:var(--text3);margin-top:4px">'+escHtml(t.note)+'</div>':'')
@@ -1573,7 +1562,6 @@ function makeTaskCard(t) {
         +'<button class="task-btn" onclick="event.stopPropagation();openEdit('+t.id+')" title="Sửa">✏️</button>'
         +'<button class="task-btn" onclick="event.stopPropagation();askDelete('+t.id+')" title="Xóa">🗑️</button>'
         +'</div>';
-    // Attach swipe gesture
     initSwipe(div, t.id);
     return div;
 }
@@ -1691,9 +1679,6 @@ function toggleDone(id) {
     if (wasntDone) {
         awardXP(t);
         updateStreak();
-        // Confetti when all today's tasks are done
-        const todayLeft = getTodayTasks().filter(x => !x.done).length;
-        if (todayLeft === 0) launchConfetti();
     }
     renderCurrent();
 }
@@ -1907,7 +1892,7 @@ function renderStats() {
     const lvl = getCurrentLevel();
     const level = LEVELS[lvl];
     const nextLevel = LEVELS[lvl+1];
-    document.getElementById('xpLevel').textContent = level.icon+' '+level.name;
+    document.getElementById('xpLevel').textContent = level.icon+' '+level.name + (xpEnabled ? '' : ' (Đã tắt)');
     document.getElementById('xpPts').textContent = xpData.xp;
     document.getElementById('streakDaysStats').textContent = xpData.streak;
     const pct = nextLevel ? Math.round((xpData.xp - level.min)/(nextLevel.min - level.min)*100) : 100;
@@ -1978,9 +1963,9 @@ function toggleFocus(){
             if(focusLeft<=0){
                 clearInterval(focusInterval); focusRunning=false;
                 document.getElementById('focusStartBtn').textContent='▶ Bắt đầu';
-                document.getElementById('focusTimeDisplay').textContent='🎉';
-                xpData.xp += 15; checkBadges(); saveXP();
-                showToast('+15 XP focus bonus! 🎯');
+                document.getElementById('focusTimeDisplay').textContent='Done!';
+                if (xpEnabled) { xpData.xp += 15; checkBadges(); saveXP(); showToast('+15 XP focus bonus! 🎯'); }
+                else { showToast('Focus hoàn thành! 🎯'); }
             }
         },1000);
     }
@@ -1999,6 +1984,7 @@ function updateFocusDisplay(){
 // ─── INIT ────────────────────────────────────────────────────────────────────
 generateRecurringTasks();
 updateNotifBtn();
+updateXPToggleBtn();
 renderRingtoneRow();
 renderToday();
 </script>
