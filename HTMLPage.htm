@@ -1233,7 +1233,7 @@ function showToast(msg, type='success') {
     el.className = 'toast ' + type;
     el.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 100);
 }
 
 // ─── MORNING GREETING ────────────────────────────────────────────────────────
