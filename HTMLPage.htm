@@ -69,8 +69,6 @@
             opacity: .55;
         }
         [data-theme="light"] #particleCanvas { opacity: .25; }
-
-        /* Ensure content is above background */
   /* Ensure content is above background */
 .header, .tabs, .screens, .search-bar,
 .overlay, .confirm-overlay, .newcat-overlay, .toast {
@@ -152,9 +150,6 @@
         .screen::-webkit-scrollbar { width:4px }
         .screen::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px }
         .bottom-space { height:20px }
-
-        .fab { display:none }
-
         .sec-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; margin-top:16px }
         .sec-head:first-child { margin-top:0 }
         .sec-title { font-size:12px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:.8px }
@@ -405,7 +400,7 @@
         transform:translateX(-50%) translateY(-80px); 
         background:var(--bg2); border:1px solid var(--border2); 
         border-radius:12px; padding:10px 18px; font-size:13px; 
-        font-weight:600; color:var(--text); z-index:300; 
+        font-weight:600; color:var(--text); z-index:1100; 
         transition:transform .3s cubic-bezier(.34,1.56,.64,1), opacity .3s; /* thêm opacity */
         white-space:nowrap; display:flex; align-items:center; gap:8px; 
         box-shadow:0 8px 24px rgba(0,0,0,.4);
@@ -563,17 +558,17 @@
         TimeFlow
     </div>
     <div class="header-date" id="headerDate">--:-- | --</div>
-   <div class="header-actions">
+  <div class="header-actions">
     <button class="hbtn-add" onclick="openAdd()" title="Thêm task">＋</button>
     <button class="hbtn" onclick="toggleSearch()" title="Tìm kiếm">🔍</button>
-    <button class="hbtn" onclick="openFocusTimer()" title="Pomodoro">🎯</button>
-    <button class="hbtn" onclick="toggleNotifPermission()" id="notifBtn" title="Bật thông báo">🔔</button>
-<button class="hbtn" onclick="toggleMoreMenu()" title="Thêm tùy chọn">⋯</button>
+    <button class="hbtn" onclick="toggleMoreMenu()" title="Thêm tùy chọn">⋯</button>
 </div>
 </div>
 
 <!-- MORE MENU -->
 <div class="more-menu" id="moreMenu">
+    <button class="more-item" onclick="openFocusTimer();toggleMoreMenu()">🎯 Pomodoro</button>
+    <button class="more-item" onclick="toggleNotifPermission();toggleMoreMenu()" id="notifBtn">🔔 Thông báo</button>
     <button class="more-item" onclick="toggleXP();toggleMoreMenu()" id="xpToggleBtn">⭐ Tính điểm XP</button>
     <button class="more-item" onclick="openAISuggest();toggleMoreMenu()">✨ AI tạo task</button>
     <button class="more-item" onclick="openTemplates();toggleMoreMenu()">📑 Mẫu task</button>
@@ -1417,14 +1412,13 @@ function updateNotifBtn() {
     const btn = document.getElementById('notifBtn');
     if (!btn) return;
     if (notifPermission === 'granted') {
-        btn.textContent = '🔔'; btn.title = 'Thông báo: Bật'; btn.style.color = 'var(--green)';
+        btn.innerHTML = '🔔 Thông báo <span style="color:var(--green);font-size:10px">(Bật)</span>';
     } else if (notifPermission === 'denied') {
-        btn.textContent = '🔕'; btn.title = 'Thông báo: Bị chặn'; btn.style.color = 'var(--red)';
+        btn.innerHTML = '🔕 Thông báo <span style="color:var(--red);font-size:10px">(Chặn)</span>';
     } else {
-        btn.textContent = '🔔'; btn.title = 'Nhấn để bật thông báo'; btn.style.color = 'var(--text3)';
+        btn.innerHTML = '🔔 Thông báo <span style="color:var(--text3);font-size:10px">(Tắt)</span>';
     }
 }
-
 async function toggleNotifPermission() {
     if (!('Notification' in window)) {
         showToast('Thiết bị này không hỗ trợ thông báo', 'warning');
@@ -1661,30 +1655,13 @@ function toggleSearch() {
     if (searchOpen) { document.getElementById('searchInput').focus(); document.getElementById('searchInput').value = ''; doSearch(''); }
 }
 function toggleMoreMenu() {
-    const menu = document.getElementById('moreMenu');
-    if (menu.style.display === 'flex') {
-        menu.style.display = 'none';
-    } else {
-        menu.style.display = 'flex';
-        menu.style.flexDirection = 'column';
-        menu.style.position = 'fixed';
-        menu.style.top = '56px';
-        menu.style.right = '14px';
-        menu.style.zIndex = '9999';
-        menu.style.background = 'var(--surface)';
-        menu.style.border = '1px solid var(--border2)';
-        menu.style.borderRadius = '14px';
-        menu.style.padding = '6px';
-        menu.style.gap = '2px';
-        menu.style.minWidth = '180px';
-        menu.style.boxShadow = '0 8px 24px rgba(0,0,0,.5)';
-    }
+    document.getElementById('moreMenu').classList.toggle('open');
 }
 document.addEventListener('click', function(e) {
     const menu = document.getElementById('moreMenu');
     const btn = e.target.closest('[onclick="toggleMoreMenu()"]');
-    if (!menu.contains(e.target) && !btn) menu.style.display = 'none';
-}); 
+    if (!menu.contains(e.target) && !btn) menu.classList.remove('open');
+});
 function doSearch(q) {
     q = q.toLowerCase().trim();
     const res = q ? tasks.filter(t =>
