@@ -141,8 +141,16 @@
         .tabs { flex-shrink:0; display:flex; padding:8px 14px; gap:5px; background:var(--bg) }
         .tab { flex:1; padding:7px 4px; border-radius:50px; border:none; font-size:10px; font-weight:700; color:var(--text3); cursor:pointer; text-align:center; transition:all .22s cubic-bezier(.4,0,.2,1); background:none; font-family:inherit; letter-spacing:.2px }
         .tab.active { background:var(--accent); color:#fff; box-shadow:0 2px 12px rgba(99,140,255,0.35) }
-        .tab .tab-icon { font-size:14px; display:block; margin-bottom:2px }
-
+        .tab .tab-icon { 
+            width: 18px; 
+            height: 18px; 
+            display: block; 
+            margin: 0 auto 3px;
+            stroke-width: 2px;
+        }
+        
+        .tab.active .tab-icon { stroke-width:2.5px; stroke:#fff; }
+        .tab:not(.active) .tab-icon { stroke:var(--text3); }
         /* ─ SCREENS ─ */
         .screens { flex:1; overflow:hidden; background:var(--surface); border:1px solid var(--border); margin:0 14px; position:relative; border-radius:16px 16px 0 0 }        .screen { position:absolute; inset:0; overflow-y:auto; padding:14px; display:none }
         .screen.active { display:block }
@@ -167,8 +175,18 @@
 
         .task-card-bar { position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:2px 0 0 2px; background:var(--custom-cat-color, transparent) }
         /* ─ TASK CARDS ─ */
-        .task-card { background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); padding:12px 13px; margin-bottom:8px; display:flex; align-items:flex-start; gap:10px; transition:transform .3s cubic-bezier(.34,1.56,.64,1), opacity .3s, box-shadow .25s, background .2s, border .2s; position:relative; overflow:hidden; user-select:none; box-shadow:0 2px 8px rgba(0,0,0,.18) }
-        .task-card:active { transform:scale(.985); box-shadow:0 1px 4px rgba(0,0,0,.12) }
+.task-card { background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); padding:12px 13px; margin-bottom:8px; display:flex; align-items:flex-start; gap:10px; transition:transform .3s cubic-bezier(.34,1.56,.64,1), opacity .3s, box-shadow .25s, background .2s, border .2s; position:relative; overflow:hidden; user-select:none; box-shadow:0 2px 8px rgba(0,0,0,.18);
+    background: rgba(26,37,64,0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}        .task-card:active { transform:scale(.985); box-shadow:0 1px 4px rgba(0,0,0,.12) }
+        @media (hover: hover) {
+    .task-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--border2);
+        box-shadow: 0 8px 24px rgba(0,0,0,.28);
+    }
+}
         [data-theme="light"] .task-card { box-shadow:0 2px 10px rgba(99,140,255,.08) }        .task-card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:2px 0 0 2px }
         .task-card.cat-work::before { background:var(--accent) }
         .task-card.cat-personal::before { background:var(--green) }
@@ -559,7 +577,7 @@
 .task-card.selecting { border-color: var(--accent); background: var(--accent-glow) }
 .task-card.selecting .task-check { background: var(--accent); border-color: var(--accent); color: #fff }
 .bulk-bar {
-    position: fixed; left: 14px; right: 14px; bottom: 14px;
+    position: fixed; left: 14px; right: 14px; bottom: calc(14px + env(safe-area-inset-bottom));
     background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius);
     padding: 10px 14px; display: none; align-items: center; gap: 10px;
     box-shadow: 0 8px 28px rgba(0,0,0,.4); z-index: 500;
@@ -578,6 +596,7 @@
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body>
 <canvas id="particleCanvas"></canvas>
@@ -592,9 +611,15 @@
         <div class="header-date" id="headerDate">--:-- | --</div>
     <div id="syncStatus" style="font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-top:1px">☁️ --</div>
 </div>  <div class="header-actions">
-    <button class="hbtn-add" onclick="openAdd()" title="Thêm task">＋</button>
-    <button class="hbtn" onclick="toggleSearch()" title="Tìm kiếm">🔍</button>
-    <button class="hbtn" onclick="toggleMoreMenu()" title="Thêm tùy chọn">⋯</button>
+    <button class="hbtn-add" onclick="openAdd()" title="Thêm task">
+        <i data-lucide="plus" style="width:18px;height:18px;stroke:#fff;stroke-width:2.5px"></i>
+    </button>
+    <button class="hbtn" onclick="toggleSearch()" title="Tìm kiếm">
+        <i data-lucide="search" style="width:15px;height:15px"></i>
+    </button>
+    <button class="hbtn" onclick="toggleMoreMenu()" title="Thêm tùy chọn">
+        <i data-lucide="more-horizontal" style="width:15px;height:15px"></i>
+    </button>
 </div>
 </div>
 
@@ -610,16 +635,31 @@
 </div>
 <!-- SEARCH BAR -->
 <div class="search-bar" id="searchBar">
-    <input class="search-input" id="searchInput" placeholder="Tìm kiếm task..." oninput="doSearch(this.value)" type="search">
+<input class="search-input" id="searchInput" placeholder="Tìm kiếm task..." oninput="debouncedSearch(this.value)" type="search">
     <button class="search-close" onclick="toggleSearch()">✕</button>
 </div>
 
 <div class="tabs">
-    <button class="tab active" onclick="goTab(0)" id="tab0"><span class="tab-icon">📋</span>Hôm nay</button>
-    <button class="tab" onclick="goTab(1)" id="tab1"><span class="tab-icon">📅</span>Tháng</button>
-    <button class="tab" onclick="goTab(2)" id="tab2"><span class="tab-icon">🗓</span>Năm</button>
-    <button class="tab" onclick="goTab(3)" id="tab3"><span class="tab-icon">📊</span>Thống kê</button>
-    <button class="tab" onclick="goTab(4)" id="tab4"><span class="tab-icon">🌱</span>Thói quen</button>
+    <button class="tab active" onclick="goTab(0)" id="tab0">
+        <i data-lucide="clipboard-list" class="tab-icon"></i>
+        Hôm nay
+    </button>
+    <button class="tab" onclick="goTab(1)" id="tab1">
+        <i data-lucide="calendar" class="tab-icon"></i>
+        Tháng
+    </button>
+    <button class="tab" onclick="goTab(2)" id="tab2">
+        <i data-lucide="calendar-range" class="tab-icon"></i>
+        Năm
+    </button>
+    <button class="tab" onclick="goTab(3)" id="tab3">
+        <i data-lucide="bar-chart-2" class="tab-icon"></i>
+        Thống kê
+    </button>
+    <button class="tab" onclick="goTab(4)" id="tab4">
+        <i data-lucide="sprout" class="tab-icon"></i>
+        Thói quen
+    </button>
 </div>
 
 <div class="screens">
@@ -1041,6 +1081,8 @@
 
     for (let i = 0; i < 72; i++) particles.push(spawn());
 
+   
+    let rafId;
     function draw() {
         ctx.clearRect(0, 0, W, H);
         particles.forEach(p => {
@@ -1055,8 +1097,12 @@
             ctx.fill();
         });
         ctx.globalAlpha = 1;
-        requestAnimationFrame(draw);
+        rafId = requestAnimationFrame(draw);
     }
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) cancelAnimationFrame(rafId);
+        else draw();
+    });
     draw();
 })();
 function launchConfetti() {
@@ -1107,12 +1153,11 @@ function launchConfetti() {
     animate();
     showToast('🎉 Hoàn thành tất cả task hôm nay!');
 }
-// ─── SWIPE GESTURE ──────────────────────────────────────────────────────────
 function initSwipe(card, taskId) {
     let startX = 0, startY = 0, dx = 0, swiping = false;
     const THRESHOLD = 72;
 
-  function onStart(e) {
+    function onStart(e) {
         if (selectionMode) return;
         const touch = e.touches ? e.touches[0] : e;
         startX = touch.clientX; startY = touch.clientY;
@@ -1120,6 +1165,7 @@ function initSwipe(card, taskId) {
         card.style.transition = 'none';
     }
     function onMove(e) {
+        if (selectionMode) return;
         const touch = e.touches ? e.touches[0] : e;
         dx = touch.clientX - startX;
         const dy = touch.clientY - startY;
@@ -1134,6 +1180,7 @@ function initSwipe(card, taskId) {
         else               card.style.boxShadow = '';
     }
     function onEnd() {
+        if (selectionMode) return;
         card.style.transition = 'transform .3s cubic-bezier(.34,1.56,.64,1), opacity .3s, box-shadow .2s';
         card.style.boxShadow = '';
         if (dx > THRESHOLD) {
@@ -1310,7 +1357,7 @@ let _sbSyncTimer = null;
 async function _sbLoadFromCloud() {
   try {
     const { data } = await _sbc.from('userdata').select('*').eq('uid', _sbUserId).single();
-    if (data && data.updated > (parseInt(localStorage.getItem('tf_last_sync')) || 0)) {
+if (data && Number(data.updated) > (parseInt(localStorage.getItem('tf_last_sync')) || 0)) {
       tasks   = data.tasks   || tasks;
       xpData  = data.xp      || xpData;
       habits  = data.habits  || habits;
@@ -1352,14 +1399,14 @@ function generateRecurringTasks() {
     const dayOfMonth = now.getDate();
     let added = 0;
 
-    const templates = {};
-    tasks.forEach(t => {
-        if (!t.rec || t.rec === 'none') return;
-        const key = t.rec + '|' + t.title + '|' + t.cat;
-        if (!templates[key] || t.ts > templates[key].ts) templates[key] = t;
-    });
+   const recMap = {};
+tasks.forEach(t => {
+    if (!t.rec || t.rec === 'none') return;
+    const key = t.rec + '|' + t.title + '|' + t.cat;
+    if (!recMap[key] || t.ts > recMap[key].ts) recMap[key] = t;
+});
 
-    Object.values(templates).forEach(tmpl => {
+Object.values(recMap).forEach(tmpl => {
         let shouldFire = false;
         if (tmpl.rec === 'daily') {
             shouldFire = true;
@@ -1442,8 +1489,15 @@ function toggleTheme() {
     localStorage.setItem('tf_theme', isLight ? 'dark' : 'light');
 }
 (function initTheme() {
-    const t = localStorage.getItem('tf_theme');
-    if (t === 'light') { document.body.dataset.theme = 'light'; document.getElementById('themeBtn').textContent = '☀️ Đổi giao diện (Sáng)'; }
+    const saved = localStorage.getItem('tf_theme');
+    if (!saved) {
+        if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+            document.body.dataset.theme = 'light';
+            document.getElementById('themeBtn').textContent = '☀️ Đổi giao diện (Sáng)';
+            return;
+        }
+    }
+    if (saved === 'light') { document.body.dataset.theme = 'light'; document.getElementById('themeBtn').textContent = '☀️ Đổi giao diện (Sáng)'; }
     else { document.getElementById('themeBtn').textContent = '🌙 Đổi giao diện (Tối)'; }
 })();
 
@@ -1831,7 +1885,11 @@ setTimeout(async () => {
     if (Notification.permission === 'default') showToast('🔔 Nhấn chuông để bật nhắc giờ task', 'warning');
     updateNotifBtn();
 }, 2000);
-
+function debounce(fn, ms) {
+    let t;
+    return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+}
+const debouncedSearch = debounce(doSearch, 200);
 // ─── SEARCH ──────────────────────────────────────────────────────────────────
 function toggleSearch() {
     searchOpen = !searchOpen;
@@ -1910,15 +1968,22 @@ function handleImport(event) {
 
 // ─── TABS ────────────────────────────────────────────────────────────────────
 function goTab(i) {
-    currentTab = i;
-    document.querySelectorAll('.screen').forEach((s,idx) => s.classList.toggle('active', idx===i));
-    document.querySelectorAll('.tab').forEach((t,idx) => t.classList.toggle('active', idx===i));
-    if (searchOpen) toggleSearch();
-    if(i===0) renderToday();
-    if(i===1) renderMonth();
-    if(i===2) renderYear();
-    if(i===3) renderStats();
-    if(i===4) renderHabits();
+    const doSwitch = () => {
+        currentTab = i;
+        document.querySelectorAll('.screen').forEach((s,idx) => s.classList.toggle('active', idx===i));
+        document.querySelectorAll('.tab').forEach((t,idx) => t.classList.toggle('active', idx===i));
+        if (searchOpen) toggleSearch();
+        if(i===0) renderToday();
+        if(i===1) renderMonth();
+        if(i===2) renderYear();
+        if(i===3) renderStats();
+        if(i===4) renderHabits();
+    };
+    if (document.startViewTransition) {
+        document.startViewTransition(doSwitch);
+    } else {
+        doSwitch();
+    }
 }
 function renderCurrent() {
     if(currentTab===0) renderToday();
@@ -1926,15 +1991,16 @@ function renderCurrent() {
     if(currentTab===3) renderStats();
     if(currentTab===4) renderHabits();
     if (searchOpen) doSearch(document.getElementById('searchInput').value);
+    lucide.createIcons();
 }
 
 // ─── TODAY ───────────────────────────────────────────────────────────────────
 function renderToday() {
-    const list = document.getElementById('todayList');
-    if (!list.children.length) {
-        list.innerHTML = [1,2,3].map(() => `<div class="skeleton skeleton-card"></div>`).join('');
+    if ('requestIdleCallback' in window) {
+        requestIdleCallback(_renderTodayReal);
+    } else {
+        _renderTodayReal();
     }
-    setTimeout(_renderTodayReal, 400);
 }
 
 function _renderTodayReal() {
@@ -1952,6 +2018,8 @@ function _renderTodayReal() {
     document.getElementById('dpDone').textContent = 'Hoàn thành: ' + done;
     document.getElementById('dpTimeLeft').textContent = 'Còn lại: ' + (today.length-done) + ' task';
     document.getElementById('todayCount').textContent = today.length;
+    const pending = today.filter(t => !t.done).length;
+document.title = pending > 0 ? `(${pending}) TimeFlow` : 'TimeFlow';
     renderTimeBlocks(today);
     const list = document.getElementById('todayList');
     if (!today.length) {
@@ -2067,7 +2135,7 @@ function makeTaskCard(t) {
 
         
         +'</div>'
-        +(t.note?'<div class="note-rendered">'+marked.parse(t.note)+'</div>':'')
++(t.note?'<div class="note-rendered">'+(()=>{try{return marked.parse(t.note)}catch(e){return escHtml(t.note)}})()+'</div>':'')
              +(t.subtasks && t.subtasks.length ? renderSubtasksMini(t) : '')
         +'</div>'
         +'<div class="task-actions">'
@@ -2196,7 +2264,7 @@ function toggleDone(id) {
     t.done = !t.done;
     save();
     if (wasntDone) {
-    if (navigator.vibrate) navigator.vibrate(30);
+if (navigator.vibrate) navigator.vibrate(15);
     awardXP(t);
     updateStreak();
     const todayLeft = getTodayTasks().filter(x => !x.done).length;
@@ -2248,6 +2316,7 @@ function confirmDelete() {
     if (deleteTargetId !== null) {
         const deletedTask = tasks.find(x => x.id === deleteTargetId);
         tasks = tasks.filter(x => x.id !== deleteTargetId);
+        if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
         save(); closeConfirm(); renderCurrent();
         // Toast có nút hoàn tác
         const el = document.getElementById('toast');
@@ -2468,17 +2537,16 @@ const ds = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String
     });
     document.getElementById('weeklyBars').innerHTML=barsHtml;
 
-    const cats=['work','personal','health','study','other'];
-    const catColors={work:'var(--accent)',personal:'var(--green)',health:'var(--red)',study:'var(--purple)',other:'var(--yellow)'};
-    const catLabels={work:'Công việc',personal:'Cá nhân',health:'Sức khỏe',study:'Học tập',other:'Khác'};
-    const maxCat=Math.max(...cats.map(c=>tasks.filter(t=>t.cat===c).length),1);
-    let cbHtml='';
-    cats.forEach(c=>{
-        const n=tasks.filter(t=>t.cat===c).length;
-        const w=Math.round(n/maxCat*100);
-        cbHtml+='<div class="cb-row"><div class="cb-dot" style="background:'+catColors[c]+'"></div><div class="cb-label">'+catLabels[c]+'</div><div class="cb-bar-bg"><div class="cb-bar-fill" style="width:'+w+'%;background:'+catColors[c]+'"></div></div><div class="cb-num">'+n+'</div></div>';
-    });
-    document.getElementById('catBreakdown').innerHTML=cbHtml;
+    const allCatList = allCats();
+const maxCat = Math.max(...allCatList.map(c => tasks.filter(t => t.cat === c.id).length), 1);
+let cbHtml = '';
+allCatList.forEach(c => {
+    const n = tasks.filter(t => t.cat === c.id).length;
+    if (!n) return;
+    const w = Math.round(n / maxCat * 100);
+    cbHtml += '<div class="cb-row"><div class="cb-dot" style="background:'+c.color+'"></div><div class="cb-label">'+c.icon+' '+c.label+'</div><div class="cb-bar-bg"><div class="cb-bar-fill" style="width:'+w+'%;background:'+c.color+'"></div></div><div class="cb-num">'+n+'</div></div>';
+});
+document.getElementById('catBreakdown').innerHTML = cbHtml;
 }
 
 // ─── FOCUS TIMER ─────────────────────────────────────────────────────────────
@@ -2808,7 +2876,7 @@ function renderAIResults() {
           <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:${catColors[t.cat]}22;color:${catColors[t.cat]}">${getCatLabel(t.cat)}</span>
           <span style="font-size:11px">${priIcon[t.pri]}</span>
         </div>
-        ${t.note ? '<div class="note-rendered" style="margin-top:5px">'+marked.parse(t.note)+'</div>' : ''}
+${t.note ? '<div class="note-rendered" style="margin-top:5px">'+(()=>{try{return marked.parse(t.note)}catch(e){return escHtml(t.note)}})()+'</div>' : ''}
       </div>`;
     list.appendChild(div);
   });
@@ -3018,6 +3086,54 @@ document.querySelectorAll('.screen').forEach(s => {
         document.getElementById('moreMenu').classList.remove('open');
     }, { passive: true });
 });
+    // ─── PULL TO REFRESH ─────────────────────────────────────────────────────────
+(function initPullToRefresh() {
+    let startY = 0;
+    let isPulling = false;
+    const indicator = document.createElement('div');
+    indicator.style.cssText = `
+        position:fixed; top:54px; left:50%; transform:translateX(-50%) translateY(-60px);
+        background:var(--accent); color:#fff; border-radius:20px; padding:6px 16px;
+        font-size:12px; font-weight:700; z-index:500; transition:transform .25s;
+        pointer-events:none; opacity:0;
+    `;
+    indicator.textContent = '↓ Kéo để làm mới';
+    document.body.appendChild(indicator);
+
+    document.querySelectorAll('.screen').forEach(screen => {
+        screen.addEventListener('touchstart', e => {
+            if (screen.scrollTop === 0) {
+                startY = e.touches[0].clientY;
+                isPulling = true;
+            }
+        }, { passive: true });
+
+        screen.addEventListener('touchmove', e => {
+            if (!isPulling) return;
+            const dy = e.touches[0].clientY - startY;
+            if (dy > 10 && screen.scrollTop === 0) {
+                indicator.style.opacity = Math.min(dy / 80, 1);
+                indicator.style.transform = `translateX(-50%) translateY(${Math.min(dy/3, 20)}px)`;
+                indicator.textContent = dy > 60 ? '↑ Thả để làm mới' : '↓ Kéo để làm mới';
+            }
+        }, { passive: true });
+
+        screen.addEventListener('touchend', e => {
+            if (!isPulling) return;
+            const dy = e.changedTouches[0].clientY - startY;
+            if (dy > 60 && screen.scrollTop === 0) {
+                renderCurrent();
+                showToast('🔄 Đã làm mới!');
+                if (navigator.vibrate) navigator.vibrate(15);
+            }
+            indicator.style.opacity = 0;
+            indicator.style.transform = 'translateX(-50%) translateY(-60px)';
+            isPulling = false;
+        });
+    });
+})();
+
+lucide.createIcons();
 </script>
 </body>
 </html>
