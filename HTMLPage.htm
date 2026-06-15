@@ -555,20 +555,43 @@
 }
 .more-item:hover { background: var(--surface); }
 .more-item:active { background: var(--surface2); transform: scale(.98); }
+/* ─ MULTI-SELECT ─ */
+.task-card.selecting { border-color: var(--accent); background: var(--accent-glow) }
+.task-card.selecting .task-check { background: var(--accent); border-color: var(--accent); color: #fff }
+.bulk-bar {
+    position: fixed; left: 14px; right: 14px; bottom: 14px;
+    background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius);
+    padding: 10px 14px; display: none; align-items: center; gap: 10px;
+    box-shadow: 0 8px 28px rgba(0,0,0,.4); z-index: 500;
+    backdrop-filter: blur(12px);
+}
+.bulk-bar.open { display: flex }
+.bulk-count { font-size:13px; font-weight:700; color:var(--text); flex:1 }
+.bulk-btn {
+    padding:9px 14px; border-radius:var(--radius-sm); font-size:12px; font-weight:700;
+    cursor:pointer; border:1px solid var(--border); background:var(--surface); color:var(--text2);
+    font-family:inherit; display:flex; align-items:center; gap:6px; transition:all .2s;
+}
+.bulk-btn.danger { border-color:var(--red); background:var(--red-soft); color:var(--red) }
+.bulk-btn.success { border-color:var(--green); background:var(--green-soft); color:var(--green) }
+.bulk-btn:active { transform:scale(.95) }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <canvas id="particleCanvas"></canvas>
+<canvas id="confettiCanvas" style="position:fixed;inset:0;z-index:1200;pointer-events:none"></canvas>
 
 <div class="header">
     <div class="header-logo">
         <div class="logo-mark">⏱</div>
         TimeFlow
     </div>
-    <div class="header-date" id="headerDate">--:-- | --</div>
-  <div class="header-actions">
+    <div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:0">
+        <div class="header-date" id="headerDate">--:-- | --</div>
+    <div id="syncStatus" style="font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-top:1px">☁️ --</div>
+</div>  <div class="header-actions">
     <button class="hbtn-add" onclick="openAdd()" title="Thêm task">＋</button>
     <button class="hbtn" onclick="toggleSearch()" title="Tìm kiếm">🔍</button>
     <button class="hbtn" onclick="toggleMoreMenu()" title="Thêm tùy chọn">⋯</button>
@@ -633,6 +656,14 @@
             <div class="sec-title">Tất cả task hôm nay</div>
             <div class="sec-count" id="todayCount">0</div>
         </div>
+        <div id="filterRow" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;padding:0 0 4px">
+    <button class="rec-opt sel" data-filter="all" onclick="setFilter(this)">Tất cả</button>
+    <button class="rec-opt" data-filter="high" onclick="setFilter(this)">🔴 Cao</button>
+    <button class="rec-opt" data-filter="med" onclick="setFilter(this)">🟡 Vừa</button>
+    <button class="rec-opt" data-filter="low" onclick="setFilter(this)">🟢 Thấp</button>
+    <button class="rec-opt" data-filter="done" onclick="setFilter(this)">✅ Xong</button>
+    <button class="rec-opt" data-filter="undone" onclick="setFilter(this)">⏳ Chưa</button>
+</div>
         <div class="swipe-hint">← Vuốt trái để xóa · Vuốt phải để hoàn thành →</div>
         <div id="todayList"></div>
         <div class="bottom-space"></div>
@@ -969,6 +1000,13 @@
         <div class="bottom-space"></div>
     </div>
 </div>
+    <!-- BULK ACTION BAR -->
+<div class="bulk-bar" id="bulkBar">
+    <span class="bulk-count" id="bulkCount">0 đã chọn</span>
+    <button class="bulk-btn success" onclick="bulkComplete()">✓ Hoàn thành</button>
+    <button class="bulk-btn danger" onclick="bulkDelete()">🗑️ Xóa</button>
+    <button class="bulk-btn" onclick="exitSelectionMode()">✕ Hủy</button>
+</div>
 <!-- TOAST -->
 <div class="toast" id="toast">⭐ <span id="toastMsg"></span></div>
 
@@ -1021,13 +1059,61 @@
     }
     draw();
 })();
-
+function launchConfetti() {
+    const canvas = document.getElementById('confettiCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const COLORS = ['#638cff','#a78bfa','#34d399','#fbbf24','#f87171','#fb923c'];
+    const pieces = [];
+    for (let i = 0; i < 120; i++) {
+        pieces.push({
+            x: Math.random() * canvas.width,
+            y: -20 - Math.random() * 100,
+            w: 6 + Math.random() * 6,
+            h: 8 + Math.random() * 8,
+            vx: (Math.random() - 0.5) * 4,
+            vy: 2 + Math.random() * 4,
+            rot: Math.random() * 360,
+            vr: (Math.random() - 0.5) * 12,
+            color: COLORS[Math.floor(Math.random() * COLORS.length)],
+            life: 0
+        });
+    }
+    let frame = 0;
+    function animate() {
+        frame++;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        let alive = false;
+        pieces.forEach(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.06;
+            p.rot += p.vr;
+            p.life++;
+            if (p.y < canvas.height + 30) alive = true;
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot * Math.PI / 180);
+            ctx.globalAlpha = Math.max(0, 1 - p.life / 180);
+            ctx.fillStyle = p.color;
+            ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+            ctx.restore();
+        });
+        ctx.globalAlpha = 1;
+        if (alive && frame < 200) requestAnimationFrame(animate);
+        else ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    animate();
+    showToast('🎉 Hoàn thành tất cả task hôm nay!');
+}
 // ─── SWIPE GESTURE ──────────────────────────────────────────────────────────
 function initSwipe(card, taskId) {
     let startX = 0, startY = 0, dx = 0, swiping = false;
     const THRESHOLD = 72;
 
-    function onStart(e) {
+  function onStart(e) {
+        if (selectionMode) return;
         const touch = e.touches ? e.touches[0] : e;
         startX = touch.clientX; startY = touch.clientY;
         dx = 0; swiping = false;
@@ -1068,7 +1154,34 @@ function initSwipe(card, taskId) {
     card.addEventListener('touchmove',   onMove,  { passive: false });
     card.addEventListener('touchend',    onEnd);
 }
+// ─── LONG PRESS (multi-select) ───────────────────────────────────────────────
+function initLongPress(card, taskId) {
+    let pressTimer = null;
+    let isDragging = false;
+    const LONG_PRESS_MS = 500;
 
+    card.addEventListener('dragstart', () => { isDragging = true; clearTimeout(pressTimer); });
+    card.addEventListener('dragend', () => { isDragging = false; });
+
+    function start(e) {
+        if (selectionMode || isDragging) return;
+        pressTimer = setTimeout(() => {
+            if (!isDragging) enterSelectionMode(taskId);
+        }, LONG_PRESS_MS);
+    }
+    function cancel() {
+        clearTimeout(pressTimer);
+    }
+
+    card.addEventListener('touchstart', start, { passive: true });
+    card.addEventListener('touchend', cancel);
+    card.addEventListener('touchmove', cancel);
+    card.addEventListener('mousedown', start);
+    card.addEventListener('mouseup', cancel);
+    card.addEventListener('mouseleave', cancel);
+}
+
+    
 // ─── STATE ───────────────────────────────────────────────────────────────────
 let tasks = JSON.parse(localStorage.getItem('tf_tasks') || '[]');
 let selCat = 'work', selPri = 'med', selRec = 'none';
@@ -1085,6 +1198,63 @@ let editingId = null;
 let deleteTargetId = null;
 let searchOpen = false;
 let dragSrcId = null;
+let currentFilter = 'all';
+    let selectionMode = false;
+let selectedIds = new Set();
+
+function enterSelectionMode(firstId) {
+    selectionMode = true;
+    selectedIds.clear();
+    if (firstId !== undefined) selectedIds.add(firstId);
+    if (navigator.vibrate) navigator.vibrate(40);
+    renderCurrent();
+    updateBulkBar();
+}
+function exitSelectionMode() {
+    selectionMode = false;
+    selectedIds.clear();
+    renderCurrent();
+    updateBulkBar();
+}
+function toggleSelectTask(id) {
+    if (selectedIds.has(id)) selectedIds.delete(id);
+    else selectedIds.add(id);
+    if (selectedIds.size === 0) { exitSelectionMode(); return; }
+    renderCurrent();
+    updateBulkBar();
+}
+function updateBulkBar() {
+    const bar = document.getElementById('bulkBar');
+    if (!bar) return;
+    if (selectionMode && selectedIds.size > 0) {
+        bar.classList.add('open');
+        document.getElementById('bulkCount').textContent = selectedIds.size + ' đã chọn';
+    } else {
+        bar.classList.remove('open');
+    }
+}
+function bulkComplete() {
+    let count = 0;
+    tasks.forEach(t => {
+        if (selectedIds.has(t.id) && !t.done) { t.done = true; count++; }
+    });
+    save();
+    showToast(`✅ Đã hoàn thành ${count} task!`);
+    exitSelectionMode();
+}
+function bulkDelete() {
+    const count = selectedIds.size;
+    tasks = tasks.filter(t => !selectedIds.has(t.id));
+    save();
+    showToast(`🗑️ Đã xóa ${count} task!`, 'warning');
+    exitSelectionMode();
+}
+function setFilter(el) {
+currentFilter = el.dataset.filter;
+document.querySelectorAll('#filterRow .rec-opt').forEach(e => e.classList.remove('sel'));
+el.classList.add('sel');
+renderCurrent();
+}
 
 // ─── RINGTONES ───────────────────────────────────────────────────────────────
 const RINGTONES = [
@@ -1152,14 +1322,19 @@ async function _sbLoadFromCloud() {
 }
 
 async function _sbSyncToCloud() {
-  if (!_sbUserId) return;
-  const now = Date.now();
-  try {
-    await _sbc.from('userdata').upsert({
-      uid: _sbUserId, tasks, xp: xpData, habits, updated: now
-    }, { onConflict: 'uid' });
-    localStorage.setItem('tf_last_sync', now);
-  } catch(e) {}
+    if (!_sbUserId) return;
+    const now = Date.now();
+    const el = document.getElementById('syncStatus');
+    if (el) el.textContent = '☁️ Đang sync...';
+    try {
+        await _sbc.from('userdata').upsert({
+            uid: _sbUserId, tasks, xp: xpData, habits, updated: now
+        }, { onConflict: 'uid' });
+        localStorage.setItem('tf_last_sync', now);
+        if (el) el.textContent = '☁️ Đã lưu ' + new Date().toLocaleTimeString('vi',{hour:'2-digit',minute:'2-digit'});
+    } catch(e) {
+        if (el) el.textContent = '⚠️ Lỗi sync';
+    }
 }
 
 function _sbScheduleSync() {
@@ -1765,8 +1940,12 @@ function renderToday() {
 function _renderTodayReal() {
     renderMorningCard();
     updateStreak();
-    const today = getTodayTasks();
-    const done = today.filter(t => t.done).length;
+    let today = getTodayTasks();
+    if (currentFilter === 'high') today = today.filter(t => t.pri === 'high');
+    else if (currentFilter === 'med') today = today.filter(t => t.pri === 'med');
+    else if (currentFilter === 'low') today = today.filter(t => t.pri === 'low');
+    else if (currentFilter === 'done') today = today.filter(t => t.done);
+    else if (currentFilter === 'undone') today = today.filter(t => !t.done);    const done = today.filter(t => t.done).length;
     const pct = today.length ? Math.round(done/today.length*100) : 0;
     document.getElementById('dayPct').textContent = pct + '%';
     document.getElementById('dayFill').style.width = pct + '%';
@@ -1858,7 +2037,7 @@ function makeTaskCard(t) {
     const catDef = getCatDef(t.cat);
     const isCustom = t.cat.startsWith('custom_');
     const hasCustomColor = !!t.color;
-    div.className = 'task-card' + (isCustom ? '' : ' cat-'+t.cat) + (t.done?' done':'') + (hasCustomColor?' has-custom-color':'');
+    div.className = 'task-card' + (isCustom ? '' : ' cat-'+t.cat) + (t.done?' done':'') + (hasCustomColor?' has-custom-color':'') + (selectionMode && selectedIds.has(t.id) ? ' selecting' : '');
     if (isCustom) div.style.setProperty('--custom-cat-color', catDef.color);
     if (hasCustomColor) div.style.setProperty('--custom-task-color', t.color);
     div.dataset.id = t.id;
@@ -1870,7 +2049,7 @@ function makeTaskCard(t) {
     div.innerHTML =
         `<div class="task-card-bar" ${barStyle}></div>`
         +'<div class="task-drag-handle" title="Kéo thả">⠿</div>'
-        +'<div class="task-check" onclick="event.stopPropagation();toggleDone('+t.id+')">'+(t.done?'✓':'')+'</div>'
++'<div class="task-check" onclick="event.stopPropagation();'+(selectionMode ? 'toggleSelectTask('+t.id+')' : 'toggleDone('+t.id+')')+'">'+(selectionMode ? (selectedIds.has(t.id)?'✓':'') : (t.done?'✓':''))+'</div>'
         +'<div class="task-body">'
         +'<div class="task-title">'+escHtml(t.title)+'</div>'
         +'<div class="task-meta">'
@@ -1878,7 +2057,12 @@ function makeTaskCard(t) {
         +'<span class="task-tag" style="background:'+catDef.color+'22;color:'+catDef.color+'">'+getCatLabel(t.cat)+'</span>'
         +'<span class="task-pri">'+priIcon+recIcon+'</span>'
         +(xpEnabled && !t.done ? '<span class="task-pts">+'+pts+' XP</span>' : '')
-        +(t.deadline?'<span class="task-time">📅 '+t.deadline+'</span>':'')
+       +(t.deadline ? (() => {
+        const days = Math.ceil((new Date(t.deadline) - new Date(todayStr())) / 86400000);
+        const color = days < 0 ? 'var(--red)' : days <= 2 ? 'var(--red)' : days <= 7 ? 'var(--yellow)' : 'var(--text2)';
+        const label = days < 0 ? `Quá hạn ${-days}n` : days === 0 ? 'Hôm nay!' : `Còn ${days}n`;
+        return `<span class="task-time" style="color:${color};font-weight:700">📅 ${label}</span>`;
+        })() : '')
         +(t.voice ? '<span class="task-voice-indicator" onclick="event.stopPropagation();toggleVoicePlay('+t.id+')" title="Nghe ghi âm">🎙️ '+(t.voice.duration||0)+'s</span>' : '')
 
         
@@ -1890,6 +2074,13 @@ function makeTaskCard(t) {
         +'<button class="task-btn" onclick="event.stopPropagation();openEdit('+t.id+')" title="Sửa">✏️</button>'
         +'<button class="task-btn" onclick="event.stopPropagation();askDelete('+t.id+')" title="Xóa">🗑️</button>'
         +'</div>';
+      div.addEventListener('click', (e) => {
+        if (selectionMode) {
+            if (e.target.closest('.task-btn')) return;
+            toggleSelectTask(t.id);
+        }
+    });
+    initLongPress(div, t.id);
     initSwipe(div, t.id);
     return div;
 }
@@ -2005,11 +2196,14 @@ function toggleDone(id) {
     t.done = !t.done;
     save();
     if (wasntDone) {
-        awardXP(t);
-        updateStreak();
+    if (navigator.vibrate) navigator.vibrate(30);
+    awardXP(t);
+    updateStreak();
+    const todayLeft = getTodayTasks().filter(x => !x.done).length;
+    if (todayLeft === 0) launchConfetti();
     }
     renderCurrent();
-}
+    }
 
 // ─── DRAG & DROP ─────────────────────────────────────────────────────────────
 function initDragDrop(container, dateStr) {
@@ -2052,9 +2246,26 @@ function askDelete(id) {
 function closeConfirm() { document.getElementById('ovConfirm').classList.remove('open'); deleteTargetId = null; }
 function confirmDelete() {
     if (deleteTargetId !== null) {
+        const deletedTask = tasks.find(x => x.id === deleteTargetId);
         tasks = tasks.filter(x => x.id !== deleteTargetId);
         save(); closeConfirm(); renderCurrent();
-        showToast('Đã xóa task');
+        // Toast có nút hoàn tác
+        const el = document.getElementById('toast');
+        const msgEl = document.getElementById('toastMsg');
+        msgEl.innerHTML = `Đã xóa "${deletedTask.title.substring(0,18)}" &nbsp;<span onclick="undoDelete()" style="color:var(--accent);cursor:pointer;font-weight:800;text-decoration:underline">Hoàn tác</span>`;
+        el.className = 'toast warning';
+        clearTimeout(toastTimer);
+        el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+        window._undoTask = deletedTask;
+        toastTimer = setTimeout(() => { el.classList.remove('show'); window._undoTask = null; }, 5000);
+    }
+}
+function undoDelete() {
+    if (window._undoTask) {
+        tasks.push(window._undoTask);
+        save(); renderCurrent();
+        window._undoTask = null;
+        showToast('↩️ Đã khôi phục task!');
     }
 }
 
@@ -2675,14 +2886,14 @@ async function toggleVoiceRecording() {
         mediaRecorder = new MediaRecorder(stream);
         mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
         mediaRecorder.onstop = () => {
-            clearInterval(recordTimerInterval);
-            const duration = Math.max(1, Math.round((Date.now() - recordStartTime) / 1000));
-            const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
-            const reader = new FileReader();
-            reader.onload = () => {
-                formVoiceNote = { dataUrl: reader.result, duration };
-                renderVoiceRow();
-                showToast('🎙️ Đã ghi âm ' + duration + 's');
+        clearInterval(recordTimerInterval);
+        const duration = Math.max(1, Math.round((Date.now() - recordStartTime) / 1000));
+        const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+        const reader = new FileReader();
+        reader.onload = () => {
+        formVoiceNote = { dataUrl: reader.result, duration };
+        renderVoiceRow();
+        showToast('🎙️ Đã ghi âm ' + duration + 's');
             };
             reader.readAsDataURL(blob);
             stream.getTracks().forEach(t => t.stop());
@@ -2793,6 +3004,20 @@ updateNotifBtn();
 updateXPToggleBtn();
 renderRingtoneRow();
 renderToday();
+// ─── OFFLINE INDICATOR ───────────────────────────────────────────────────────
+window.addEventListener('offline', () => showToast('📴 Đang offline — dữ liệu lưu cục bộ', 'warning'));
+window.addEventListener('online',  () => { showToast('🌐 Đã có mạng — đang đồng bộ...'); _sbSyncToCloud(); });
+
+// ─── ĐÓNG MENU KHI SCROLL ────────────────────────────────────────────────────
+document.querySelector('.screens').addEventListener('scroll', () => {
+document.getElementById('moreMenu').classList.remove('open');
+}, { passive: true });
+
+document.querySelectorAll('.screen').forEach(s => {
+    s.addEventListener('scroll', () => {
+        document.getElementById('moreMenu').classList.remove('open');
+    }, { passive: true });
+});
 </script>
 </body>
 </html>
