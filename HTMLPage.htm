@@ -152,7 +152,8 @@
         .tab.active .tab-icon { stroke-width:2.5px; stroke:#fff; }
         .tab:not(.active) .tab-icon { stroke:var(--text3); }
         /* ─ SCREENS ─ */
-        .screens { flex:1; overflow:hidden; background:var(--surface); border:1px solid var(--border); margin:0 14px; position:relative; border-radius:16px 16px 0 0 }        .screen { position:absolute; inset:0; overflow-y:auto; padding:14px; display:none }
+        .screens { flex:1; overflow:hidden; background:var(--surface); border:1px solid var(--border); margin:0 14px; position:relative; border-radius:16px 16px 0 0 ; position: relative; z-index: 1;}    
+        .screen { position:absolute; inset:0; overflow-y:auto; padding:14px; display:none }
         .screen.active { display:block }
         .screen::-webkit-scrollbar { width:4px }
         .screen::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px }
@@ -688,6 +689,36 @@
 @keyframes vtFadeIn {
     from { opacity: 0; transform: translateY(-6px) scale(.99); }
     to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+/* FIX MOBILE TOUCH */
+body::before {
+    pointer-events: none !important;
+    touch-action: none;
+}
+#particleCanvas {
+    pointer-events: none !important;
+    touch-action: none;
+}
+.tabs {
+    position: relative;
+    z-index: 10;
+    touch-action: manipulation;
+}
+.tab {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    cursor: pointer;
+}
+.hbtn, .hbtn-add {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+.task-check, .task-btn, .task-card {
+    touch-action: manipulation;
+}
+.screen {
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
 }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
@@ -1360,7 +1391,7 @@ function initSwipe(card, taskId) {
         const dy = touch.clientY - startY;
         if (!swiping && Math.abs(dy) > Math.abs(dx)) return;
         swiping = true;
-        if (e.cancelable) e.preventDefault();
+      
         const clamp = Math.max(-120, Math.min(80, dx));
         card.style.transform = `translateX(${clamp}px)`;
         card.style.opacity = 1 - Math.abs(clamp) / 220;
@@ -1387,7 +1418,7 @@ function initSwipe(card, taskId) {
     }
 
     card.addEventListener('touchstart',  onStart, { passive: true });
-    card.addEventListener('touchmove',   onMove,  { passive: false });
+    card.addEventListener('touchmove',   onMove,  { passive: true });
     card.addEventListener('touchend',    onEnd);
 }
 // ─── LONG PRESS (multi-select) ───────────────────────────────────────────────
@@ -2256,23 +2287,6 @@ async function createRoom() {
   await _doJoin(code, name);
 }
 
-async function joinRoom() {
-  const name = document.getElementById('roomUserName').value.trim();
-  const code = document.getElementById('roomCodeInput').value.trim();
-  if (!name) { document.getElementById('roomUserName').focus(); showToast('Nhập tên của bạn!', 'warning'); return; }
-  if (code.length !== 6) { document.getElementById('roomCodeInput').focus(); showToast('Mã phòng gồm 6 số!', 'warning'); return; }
-
-  // Chờ UID sẵn sàng
-  if (!_sbUserId) {
-    const { data } = await _sbc.auth.signInAnonymously();
-    _sbUserId = data?.session?.user?.id || 'user_' + Date.now();
-    localStorage.setItem('tf_uid', _sbUserId);
-  }
-
-  const { data } = await _sbc.from('rooms').select('code').eq('code', code).single();
-  if (!data) { showToast('Không tìm thấy phòng!', 'warning'); return; }
-  await _doJoin(code, name);
-}
 
 async function joinRoom() {
   const name = document.getElementById('roomUserName').value.trim();
