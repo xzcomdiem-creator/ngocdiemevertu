@@ -536,6 +536,60 @@
 .note-rendered a { color:var(--accent); text-decoration:none }
 .note-rendered code { background:var(--bg3); border-radius:4px; padding:1px 5px; font-family:'JetBrains Mono',monospace; font-size:11px }
 @keyframes spin { to { transform: rotate(360deg) } }
+
+
+/* ─ ROOM ─ */
+.room-bar {
+  display:flex; align-items:center; gap:8px; padding:7px 14px;
+  background:var(--surface); border-bottom:1px solid var(--border);
+  font-size:12px; flex-shrink:0; position:relative; z-index:1;
+}
+.room-code-badge {
+  font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:800;
+  color:var(--accent); background:var(--accent-glow); border:1px solid var(--accent);
+  border-radius:8px; padding:3px 10px; letter-spacing:2px; cursor:pointer;
+}
+.room-members-row { display:flex; }
+.room-avatar {
+  width:26px; height:26px; border-radius:50%; border:2px solid var(--bg);
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:700; color:#fff; margin-left:-6px;
+  flex-shrink:0; cursor:default;
+}
+.room-avatar:first-child { margin-left:0; }
+.room-leave-btn {
+  margin-left:auto; padding:4px 10px; border-radius:6px; font-size:11px;
+  font-weight:700; background:var(--red-soft); border:1px solid var(--red);
+  color:var(--red); cursor:pointer; font-family:inherit;
+}
+.task-assignee {
+  display:flex; align-items:center; gap:4px; font-size:10px;
+  color:var(--text3); margin-top:3px;
+}
+.task-assignee-avatar {
+  width:16px; height:16px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:9px; font-weight:700; color:#fff; flex-shrink:0;
+}
+.assign-btn {
+  padding:4px 9px; border-radius:6px; font-size:11px; font-weight:700;
+  background:var(--surface2); border:1px solid var(--border);
+  color:var(--text3); cursor:pointer; font-family:inherit;
+}
+.assign-btn:active { transform:scale(.95); }
+.assign-dropdown {
+  position:absolute; right:8px; top:32px; background:var(--bg2);
+  border:1px solid var(--border2); border-radius:12px; padding:6px;
+  z-index:200; min-width:160px; box-shadow:0 8px 24px rgba(0,0,0,.4);
+}
+.assign-option {
+  display:flex; align-items:center; gap:8px; padding:7px 10px;
+  border-radius:8px; cursor:pointer; font-size:12px;
+  color:var(--text); font-weight:600; transition:background .15s;
+}
+.assign-option:hover { background:var(--surface); }
+
+    /* ─ MORE MENU ─ */
     /* ─ MORE MENU ─ */
 .more-menu {
     position: fixed;
@@ -694,6 +748,7 @@
 
 <!-- MORE MENU -->
 <div class="more-menu" id="moreMenu">
+    <button class="more-item" onclick="openRoomPanel();toggleMoreMenu()" id="roomMenuBtn">👥 Phòng nhóm</button>
     <button class="more-item" onclick="openFocusTimer();toggleMoreMenu()">🎯 Pomodoro</button>
     <button class="more-item" onclick="toggleNotifPermission();toggleMoreMenu()" id="notifBtn">🔔 Thông báo</button>
     <button class="more-item" onclick="toggleXP();toggleMoreMenu()" id="xpToggleBtn">⭐ Tính điểm XP</button>
@@ -702,6 +757,13 @@
     <button class="more-item" onclick="toggleTheme();toggleMoreMenu()" id="themeBtn">🌙 Đổi giao diện</button>
     <button class="more-item" onclick="openExport();toggleMoreMenu()">📤 Export / Import</button>
 </div>
+    <!-- ROOM BAR -->
+<div id="roomBar" style="display:none" class="room-bar">
+  <div id="roomCodeBadge" class="room-code-badge" onclick="copyRoomCode()" title="Nhấn để copy mã phòng"></div>
+  <div class="room-members-row" id="roomMembersRow"></div>
+  <button class="room-leave-btn" onclick="leaveRoom()">Rời phòng</button>
+</div>
+
 <!-- SEARCH BAR -->
 <div class="search-bar" id="searchBar">
 <input class="search-input" id="searchInput" placeholder="Tìm kiếm task..." oninput="debouncedSearch(this.value)" type="search">
@@ -1121,6 +1183,52 @@
         <div class="bottom-space"></div>
     </div>
 </div>
+    <!-- ROOM PANEL -->
+<div class="overlay" id="ovRoom" onclick="if(event.target===this)closeOverlay('ovRoom')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">👥 Phòng nhóm</div>
+
+    <div id="roomJoinSection">
+      <div class="form-group">
+        <label class="form-label">Tên của bạn</label>
+        <input class="form-input" id="roomUserName" placeholder="Nhập tên hiển thị..." maxlength="20" type="text">
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="submit-btn" onclick="createRoom()" style="flex:1">＋ Tạo phòng mới</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);text-align:center;margin-bottom:12px">— hoặc —</div>
+      <div class="form-group">
+        <label class="form-label">Mã phòng (6 số)</label>
+        <input class="form-input" id="roomCodeInput" placeholder="Nhập mã phòng..."
+          maxlength="6"
+          style="font-family:'JetBrains Mono',monospace;font-size:20px;letter-spacing:4px;text-align:center"
+          oninput="this.value=this.value.replace(/\D/g,'')" type="text">
+      </div>
+      <button class="submit-btn" onclick="joinRoom()"
+        style="background:linear-gradient(135deg,var(--green),var(--accent))">→ Vào phòng</button>
+    </div>
+
+    <div id="roomActiveSection" style="display:none">
+      <div style="text-align:center;padding:12px 0 20px">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:6px">MÃ PHÒNG CỦA BẠN</div>
+        <div id="roomCodeDisplay" class="room-code-badge"
+          style="font-size:28px;letter-spacing:6px;padding:10px 24px;display:inline-block"
+          onclick="copyRoomCode()"></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:8px">Nhấn để copy · Chia sẻ cho bạn bè</div>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">
+        Thành viên trong phòng
+      </div>
+      <div id="roomMemberList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px"></div>
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">
+        Gán task cho thành viên
+      </div>
+      <div id="roomTaskAssignList" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+  </div>
+</div>
+
     <!-- BULK ACTION BAR -->
 <div class="bulk-bar" id="bulkBar">
     <span class="bulk-count" id="bulkCount">0 đã chọn</span>
@@ -2094,6 +2202,289 @@ function renderCurrent() {
     if (searchOpen) doSearch(document.getElementById('searchInput').value);
     lucide.createIcons();
 }
+    // ─── ROOM / COLLABORATIVE ────────────────────────────────────────────────────
+let currentRoom = JSON.parse(localStorage.getItem('tf_room') || 'null');
+let roomMembers = [];
+let roomChannel = null;
+const AVATAR_COLORS = ['#638cff','#34d399','#f87171','#a78bfa','#fb923c','#22d3ee','#f472b6','#fbbf24'];
+const AVATAR_EMOJIS = ['😀','🦊','🐼','🦁','🐸','🐙','🦋','🌟','🚀','🎯'];
+
+function getRoomColor(uid) {
+  let hash = 0;
+  for (let c of uid) hash = (hash * 31 + c.charCodeAt(0)) & 0xffffffff;
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+function getRoomEmoji(uid) {
+  let hash = 0;
+  for (let c of uid) hash = (hash * 17 + c.charCodeAt(0)) & 0xffffffff;
+  return AVATAR_EMOJIS[Math.abs(hash) % AVATAR_EMOJIS.length];
+}
+
+function openRoomPanel() {
+  if (currentRoom) {
+    document.getElementById('roomJoinSection').style.display = 'none';
+    document.getElementById('roomActiveSection').style.display = 'block';
+    document.getElementById('roomCodeDisplay').textContent = currentRoom.code;
+    refreshRoomPanel();
+  } else {
+    document.getElementById('roomJoinSection').style.display = 'block';
+    document.getElementById('roomActiveSection').style.display = 'none';
+    document.getElementById('roomUserName').value =
+      localStorage.getItem('tf_room_name') || '';
+  }
+  document.getElementById('ovRoom').classList.add('open');
+}
+
+async function createRoom() {
+  const name = document.getElementById('roomUserName').value.trim();
+  if (!name) { document.getElementById('roomUserName').focus(); return; }
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  await _sbc.from('rooms').insert({ code });
+  await _doJoin(code, name);
+}
+
+async function joinRoom() {
+  const name = document.getElementById('roomUserName').value.trim();
+  const code = document.getElementById('roomCodeInput').value.trim();
+  if (!name) {
+    document.getElementById('roomUserName').focus();
+    showToast('Nhập tên của bạn!', 'warning'); return;
+  }
+  if (code.length !== 6) {
+    document.getElementById('roomCodeInput').focus();
+    showToast('Mã phòng gồm 6 số!', 'warning'); return;
+  }
+  const { data } = await _sbc.from('rooms').select('code').eq('code', code).single();
+  if (!data) { showToast('Không tìm thấy phòng!', 'warning'); return; }
+  await _doJoin(code, name);
+}
+
+async function _doJoin(code, name) {
+  const color = getRoomColor(_sbUserId);
+  const emoji = getRoomEmoji(_sbUserId);
+  currentRoom = { code, myName: name, myColor: color, myEmoji: emoji };
+  localStorage.setItem('tf_room', JSON.stringify(currentRoom));
+  localStorage.setItem('tf_room_name', name);
+  await _sbc.from('room_members').upsert(
+    { uid: _sbUserId, room_code: code, name, avatar: emoji + '|' + color },
+    { onConflict: 'uid,room_code' }
+  );
+  for (const t of tasks) {
+    await _sbc.from('room_tasks').upsert(
+      { id: t.id, room_code: code, task: { ...t } },
+      { onConflict: 'id' }
+    );
+  }
+  subscribeRoom(code);
+  document.getElementById('roomJoinSection').style.display = 'none';
+  document.getElementById('roomActiveSection').style.display = 'block';
+  document.getElementById('roomCodeDisplay').textContent = code;
+  showRoomBar();
+  await refreshRoomPanel();
+  showToast('👥 Đã vào phòng ' + code + '!');
+}
+
+async function leaveRoom() {
+  if (roomChannel) { _sbc.removeChannel(roomChannel); roomChannel = null; }
+  currentRoom = null;
+  localStorage.removeItem('tf_room');
+  document.getElementById('roomBar').style.display = 'none';
+  closeOverlay('ovRoom');
+  showToast('Đã rời phòng');
+}
+
+function copyRoomCode() {
+  if (!currentRoom) return;
+  navigator.clipboard.writeText(currentRoom.code).catch(() => {});
+  showToast('📋 Đã copy mã ' + currentRoom.code);
+}
+
+async function refreshRoomPanel() {
+  if (!currentRoom) return;
+  const { data: members } = await _sbc.from('room_members')
+    .select('*').eq('room_code', currentRoom.code);
+  roomMembers = members || [];
+
+  const ml = document.getElementById('roomMemberList');
+  if (!ml) return;
+  ml.innerHTML = roomMembers.map(m => {
+    const [emoji, color] = (m.avatar || '😀|#638cff').split('|');
+    const isMe = m.uid === _sbUserId;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;
+      background:var(--surface);border-radius:10px;
+      border:1px solid ${isMe ? 'var(--accent)' : 'var(--border)'}">
+      <div class="room-avatar" style="background:${color};margin-left:0">${emoji}</div>
+      <div style="flex:1;font-size:13px;font-weight:700;color:var(--text)">
+        ${escHtml(m.name)}
+        ${isMe ? '<span style="font-size:10px;color:var(--accent)"> (bạn)</span>' : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const { data: rtasks } = await _sbc.from('room_tasks')
+    .select('*').eq('room_code', currentRoom.code)
+    .order('id', { ascending: false }).limit(15);
+  const tal = document.getElementById('roomTaskAssignList');
+  if (!tal) return;
+  if (!rtasks || !rtasks.length) {
+    tal.innerHTML = '<div style="font-size:12px;color:var(--text3)">Chưa có task nào trong phòng.</div>';
+  } else {
+    tal.innerHTML = rtasks.map(r => {
+      const t = r.task;
+      const assignee = roomMembers.find(m => m.uid === t.assignedTo);
+      const [aEmoji, aColor] = assignee ? (assignee.avatar || '😀|#638cff').split('|') : [];
+      return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;
+        background:var(--surface);border-radius:10px;border:1px solid var(--border)">
+        <div style="flex:1;font-size:12px;font-weight:600;color:var(--text);
+          white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(t.title)}</div>
+        ${assignee
+          ? `<div class="room-avatar" style="background:${aColor};margin-left:0;
+              width:22px;height:22px;font-size:11px" title="${escHtml(assignee.name)}">${aEmoji}</div>`
+          : ''}
+        <div style="position:relative">
+          <button class="assign-btn" onclick="toggleAssignDropdown(event,${t.id})">
+            ${assignee ? '✎ Đổi' : '＋ Gán'}
+          </button>
+          <div class="assign-dropdown" id="dd_${t.id}" style="display:none">
+            ${roomMembers.map(m => {
+              const [mEmoji, mColor] = (m.avatar || '😀|#638cff').split('|');
+              return `<div class="assign-option"
+                onclick="assignTask(${t.id},'${m.uid}');closeAllDropdowns()">
+                <div class="room-avatar" style="background:${mColor};margin-left:0;
+                  width:22px;height:22px;font-size:11px">${mEmoji}</div>
+                ${escHtml(m.name)}
+              </div>`;
+            }).join('')}
+            <div class="assign-option" style="color:var(--text3)"
+              onclick="assignTask(${t.id},'');closeAllDropdowns()">✕ Bỏ gán</div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  updateRoomBar();
+}
+
+function toggleAssignDropdown(e, taskId) {
+  e.stopPropagation();
+  const dd = document.getElementById('dd_' + taskId);
+  const isOpen = dd.style.display === 'block';
+  closeAllDropdowns();
+  if (!isOpen) dd.style.display = 'block';
+}
+function closeAllDropdowns() {
+  document.querySelectorAll('.assign-dropdown').forEach(d => d.style.display = 'none');
+}
+document.addEventListener('click', closeAllDropdowns);
+
+async function assignTask(taskId, uid) {
+  const t = tasks.find(x => x.id === taskId);
+  if (t) { t.assignedTo = uid || undefined; save(); }
+  await _sbc.from('room_tasks').upsert(
+    { id: taskId, room_code: currentRoom.code,
+      task: { ...t, assignedTo: uid || null },
+      updated_at: new Date().toISOString() },
+    { onConflict: 'id' }
+  );
+  const member = roomMembers.find(m => m.uid === uid);
+  showToast(member ? `✅ Đã gán cho ${member.name}` : '✕ Đã bỏ gán');
+  await refreshRoomPanel();
+  renderCurrent();
+}
+
+function showRoomBar() {
+  if (!currentRoom) return;
+  document.getElementById('roomBar').style.display = 'flex';
+  document.getElementById('roomCodeBadge').textContent = currentRoom.code;
+  updateRoomBar();
+}
+function updateRoomBar() {
+  const row = document.getElementById('roomMembersRow');
+  if (!row) return;
+  row.innerHTML = roomMembers.slice(0, 6).map(m => {
+    const [emoji, color] = (m.avatar || '😀|#638cff').split('|');
+    return `<div class="room-avatar" style="background:${color}"
+      title="${escHtml(m.name)}">${emoji}</div>`;
+  }).join('');
+}
+
+function subscribeRoom(code) {
+  if (roomChannel) _sbc.removeChannel(roomChannel);
+  roomChannel = _sbc
+    .channel('room_' + code)
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'room_tasks', filter: 'room_code=eq.' + code },
+      payload => {
+        if (payload.eventType === 'DELETE') {
+          tasks = tasks.filter(t => t.id !== payload.old.id);
+        } else if (payload.new && payload.new.task) {
+          const incoming = payload.new.task;
+          const idx = tasks.findIndex(t => t.id === incoming.id);
+          if (idx >= 0) {
+            if (incoming.assignedTo !== undefined) tasks[idx].assignedTo = incoming.assignedTo;
+            tasks[idx].done = incoming.done;
+          } else {
+            tasks.push(incoming);
+          }
+        }
+        save(); renderCurrent();
+        showToast('🔄 Nhóm vừa cập nhật task');
+      }
+    )
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'room_members', filter: 'room_code=eq.' + code },
+      () => { refreshRoomPanel(); }
+    )
+    .subscribe();
+}
+
+// Override save để sync room tasks
+window.save = function() {
+  localStorage.setItem('tf_tasks', JSON.stringify(tasks));
+  _sbScheduleSync();
+  if (currentRoom) {
+    tasks.forEach(t => {
+      _sbc.from('room_tasks').upsert(
+        { id: t.id, room_code: currentRoom.code,
+          task: { ...t }, updated_at: new Date().toISOString() },
+        { onConflict: 'id' }
+      ).then(() => {});
+    });
+  }
+};
+
+// Hiển thị assignee trên task card
+const _origMakeTaskCard = makeTaskCard;
+window.makeTaskCard = function(t) {
+  const card = _origMakeTaskCard(t);
+  if (currentRoom && t.assignedTo) {
+    const m = roomMembers.find(x => x.uid === t.assignedTo);
+    if (m) {
+      const [emoji, color] = (m.avatar || '😀|#638cff').split('|');
+      const badge = document.createElement('div');
+      badge.className = 'task-assignee';
+      badge.innerHTML = `<div class="task-assignee-avatar" style="background:${color}">${emoji}</div> ${escHtml(m.name)}`;
+      const body = card.querySelector('.task-body');
+      if (body) body.appendChild(badge);
+    }
+  }
+  return card;
+};
+
+// Restore room khi reload trang
+(function restoreRoom() {
+  if (!currentRoom) return;
+  showRoomBar();
+  _sbc.from('room_members').select('*')
+    .eq('room_code', currentRoom.code)
+    .then(({ data }) => {
+      roomMembers = data || [];
+      updateRoomBar();
+    });
+  subscribeRoom(currentRoom.code);
+})();
+   
+
 
 // ─── TODAY ───────────────────────────────────────────────────────────────────
 function renderToday() {
