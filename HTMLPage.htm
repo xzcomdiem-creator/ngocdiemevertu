@@ -296,7 +296,8 @@
         .cb-bar-bg { flex:2; height:5px; background:var(--bg3); border-radius:3px; overflow:hidden }
         .cb-bar-fill { height:5px; border-radius:3px; transition:width .6s }
         .cb-num { font-size:10px; color:var(--text3); font-family:'JetBrains Mono',monospace; width:18px; text-align:right }
-
+        .heatmap-grid { display:grid; grid-template-columns:repeat(53,1fr); gap:2px }
+        .heatmap-cell { aspect-ratio:1; border-radius:2px; background:var(--bg3) }    
         /* ─ GAMIFICATION ─ */
         .xp-card { background:linear-gradient(135deg,rgba(251,191,36,0.12),rgba(251,146,60,0.12)); border:1px solid rgba(251,191,36,0.3); border-radius:var(--radius); padding:14px; margin-bottom:12px }
         .xp-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px }
@@ -638,6 +639,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 </head>
 <body>
 <!-- ONBOARDING -->
@@ -837,6 +840,18 @@
             <div class="wc-title" style="margin-bottom:10px">Theo danh mục</div>
             <div id="catBreakdown"></div>
         </div>
+        <div class="weekly-chart">
+    <div class="wc-title">Biểu đồ tròn danh mục</div>
+    <div style="position:relative;height:200px"><canvas id="catDoughnutCanvas"></canvas></div>
+</div>
+<div class="weekly-chart">
+    <div class="wc-title">Xu hướng tuần/tháng</div>
+    <div style="position:relative;height:200px"><canvas id="trendLineCanvas"></canvas></div>
+</div>
+<div class="weekly-chart">
+    <div class="wc-title">Heatmap năm</div>
+    <div id="yearHeatmapWrap"></div>
+</div>
        <div class="bottom-space"></div>
     </div>
 
@@ -2633,6 +2648,77 @@ allCatList.forEach(c => {
     cbHtml += '<div class="cb-row"><div class="cb-dot" style="background:'+c.color+'"></div><div class="cb-label">'+c.icon+' '+c.label+'</div><div class="cb-bar-bg"><div class="cb-bar-fill" style="width:'+w+'%;background:'+c.color+'"></div></div><div class="cb-num">'+n+'</div></div>';
 });
 document.getElementById('catBreakdown').innerHTML = cbHtml;
+    renderCategoryDoughnut();
+    renderTrendLineChart();
+    renderYearHeatmap();
+}
+function renderCategoryDoughnut() {
+    const canvas = document.getElementById('catDoughnutCanvas');
+    if (!canvas) return;
+    const labels = [], data = [], colors = [];
+    allCats().forEach(c => {
+        const n = tasks.filter(t => t.cat === c.id).length;
+        if (!n) return;
+        labels.push(c.icon + ' ' + c.label); data.push(n); colors.push(c.color);
+    });
+    if (catDoughnutChart) catDoughnutChart.destroy();
+    if (!data.length) return;
+    catDoughnutChart = new Chart(canvas, {
+        type: 'doughnut',
+        data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { color: '#8a9cc8', font: { size: 11 } } } } }
+    });
+}
+
+function renderTrendLineChart() {
+    const canvas = document.getElementById('trendLineCanvas');
+    if (!canvas) return;
+    const now = new Date();
+    const days = [];
+    for (let i = 27; i >= 0; i--) {
+        const d = new Date(now); d.setDate(d.getDate() - i);
+        const ds = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+        days.push(tasks.filter(t => t.date === ds && t.done).length);
+    }
+    const weeks = [days.slice(0,7), days.slice(7,14), days.slice(14,21), days.slice(21,28)];
+    const weekColors = ['#638cff','#a78bfa','#34d399','#fb923c'];
+    const datasets = weeks.map((w, i) => ({
+        label: i === 3 ? 'Tuần này' : `${3-i} tuần trước`,
+        data: w, borderColor: weekColors[i], backgroundColor: 'transparent',
+        tension: 0.3, borderWidth: i === 3 ? 3 : 1.5
+    }));
+    if (trendLineChart) trendLineChart.destroy();
+    trendLineChart = new Chart(canvas, {
+        type: 'line',
+        data: { labels: ['Ngày 1','Ngày 2','Ngày 3','Ngày 4','Ngày 5','Ngày 6','Ngày 7'], datasets },
+        options: { responsive: true, maintainAspectRatio: false,
+            scales: {
+                x: { ticks: { color: '#4a5880' }, grid: { display: false } },
+                y: { beginAtZero: true, ticks: { color: '#4a5880', stepSize: 1 } }
+            },
+            plugins: { legend: { position: 'bottom', labels: { color: '#8a9cc8', font: { size: 10 } } } } }
+    });
+}
+
+function renderYearHeatmap() {
+    const wrap = document.getElementById('yearHeatmapWrap');
+    if (!wrap) return;
+    const now = new Date();
+    const cells = [];
+    for (let i = 364; i >= 0; i--) {
+        const d = new Date(now); d.setDate(d.getDate() - i);
+        const ds = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+        cells.push(tasks.filter(t => t.date === ds && t.done).length);
+    }
+    const max = Math.max(...cells, 1);
+    let html = '<div class="heatmap-grid">';
+    cells.forEach(n => {
+        const bg = n === 0 ? 'var(--bg3)' : `rgba(99,140,255,${0.2 + Math.min(1, n/max)*0.8})`;
+        html += `<div class="heatmap-cell" style="background:${bg}"></div>`;
+    });
+    html += '</div>';
+    wrap.innerHTML = html;
 }
 
 // ─── FOCUS TIMER ─────────────────────────────────────────────────────────────
@@ -2681,6 +2767,7 @@ function updateFocusDisplay(){
 }
 // ─── HABITS ──────────────────────────────────────────────────────────────────
 let habits = JSON.parse(localStorage.getItem('tf_habits') || '[]');
+let catDoughnutChart = null, trendLineChart = null;
 let habitEditId = null;
 let selHabitIcon = '🌱';
 let selHabitColor = '#34d399';
