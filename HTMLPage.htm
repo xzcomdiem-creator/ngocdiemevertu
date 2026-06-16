@@ -1530,7 +1530,6 @@ let _sbUserId = localStorage.getItem('tf_uid') || null;
 let _sbSyncTimer = null;
 
 (async function initSupabase() {
-  // Đăng nhập ẩn danh
   let { data: { session } } = await _sbc.auth.getSession();
   if (!session) {
     const { data } = await _sbc.auth.signInAnonymously();
@@ -1540,6 +1539,10 @@ let _sbSyncTimer = null;
     _sbUserId = session.user.id;
     localStorage.setItem('tf_uid', _sbUserId);
     await _sbLoadFromCloud();
+  } else {
+    // Fallback nếu Supabase auth lỗi
+    _sbUserId = localStorage.getItem('tf_uid') || 'user_' + Date.now();
+    localStorage.setItem('tf_uid', _sbUserId);
   }
 })();
 
@@ -2240,16 +2243,34 @@ function openRoomPanel() {
 async function createRoom() {
   const name = document.getElementById('roomUserName').value.trim();
   if (!name) { document.getElementById('roomUserName').focus(); return; }
-  
-  // Đảm bảo đã đăng nhập trước
+
+  // Chờ UID sẵn sàng
   if (!_sbUserId) {
     const { data } = await _sbc.auth.signInAnonymously();
-    _sbUserId = data?.user?.id || 'user_' + Date.now();
+    _sbUserId = data?.session?.user?.id || 'user_' + Date.now();
     localStorage.setItem('tf_uid', _sbUserId);
   }
-  
+
   const code = String(Math.floor(100000 + Math.random() * 900000));
   await _sbc.from('rooms').insert({ code });
+  await _doJoin(code, name);
+}
+
+async function joinRoom() {
+  const name = document.getElementById('roomUserName').value.trim();
+  const code = document.getElementById('roomCodeInput').value.trim();
+  if (!name) { document.getElementById('roomUserName').focus(); showToast('Nhập tên của bạn!', 'warning'); return; }
+  if (code.length !== 6) { document.getElementById('roomCodeInput').focus(); showToast('Mã phòng gồm 6 số!', 'warning'); return; }
+
+  // Chờ UID sẵn sàng
+  if (!_sbUserId) {
+    const { data } = await _sbc.auth.signInAnonymously();
+    _sbUserId = data?.session?.user?.id || 'user_' + Date.now();
+    localStorage.setItem('tf_uid', _sbUserId);
+  }
+
+  const { data } = await _sbc.from('rooms').select('code').eq('code', code).single();
+  if (!data) { showToast('Không tìm thấy phòng!', 'warning'); return; }
   await _doJoin(code, name);
 }
 
