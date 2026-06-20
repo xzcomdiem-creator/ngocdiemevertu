@@ -716,6 +716,11 @@ body::before {
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
 }
+/* Swipe hoạt động đúng trên mobile */
+.task-card { touch-action: pan-y; }
+@media (hover: hover) {
+    .task-card:hover { touch-action: auto; }
+}
 .task-check, .task-btn, .task-card {
     touch-action: manipulation;
 }
@@ -1378,80 +1383,120 @@ function launchConfetti() {
     showToast('🎉 Hoàn thành tất cả task hôm nay!');
 }
 function initSwipe(card, taskId) {
-    let startX = 0, startY = 0, dx = 0, swiping = false;
-    const THRESHOLD = 72;
+    let startX = 0, startY = 0, dx = 0;
+    let swiping = false, locked = false;
+    const THRESHOLD = 80;
+    const MAX_VERTICAL = 12;
 
     function onStart(e) {
         if (selectionMode) return;
         const touch = e.touches ? e.touches[0] : e;
-        startX = touch.clientX; startY = touch.clientY;
-        dx = 0; swiping = false;
+        startX = touch.clientX;
+        startY = touch.clientY;
+        dx = 0; swiping = false; locked = false;
         card.style.transition = 'none';
     }
+
     function onMove(e) {
-        if (selectionMode) return;
+        if (selectionMode || locked) return;
         const touch = e.touches ? e.touches[0] : e;
-        dx = touch.clientX - startX;
-        const dy = touch.clientY - startY;
-        if (!swiping && Math.abs(dy) > Math.abs(dx)) return;
-        swiping = true;
-      
-        const clamp = Math.max(-120, Math.min(80, dx));
+        const curDx = touch.clientX - startX;
+        const curDy = touch.clientY - startY;
+
+        // Nếu vuốt dọc nhiều hơn ngang → không phải swipe ngang
+        if (!swiping && Math.abs(curDy) > MAX_VERTICAL && Math.abs(curDy) > Math.abs(curDx)) {
+            locked = true;
+            return;
+        }
+        if (Math.abs(curDx) > 8) swiping = true;
+        if (!swiping) return;
+
+        dx = curDx;
+        // Giới hạn khoảng kéo
+        const clamp = Math.max(-110, Math.min(90, dx));
         card.style.transform = `translateX(${clamp}px)`;
-        card.style.opacity = 1 - Math.abs(clamp) / 220;
-        if (dx > 20)       card.style.boxShadow = `0 0 0 2px var(--green)`;
-        else if (dx < -20) card.style.boxShadow = `0 0 0 2px var(--red)`;
-        else               card.style.boxShadow = '';
-    }
-    function onEnd() {
-        if (selectionMode) return;
-        card.style.transition = 'transform .3s cubic-bezier(.34,1.56,.64,1), opacity .3s, box-shadow .2s';
-        card.style.boxShadow = '';
-        if (dx > THRESHOLD) {
-            card.style.transform = 'translateX(100px)';
-            card.style.opacity = '0';
-            setTimeout(() => toggleDone(taskId), 280);
-        } else if (dx < -THRESHOLD) {
-            card.style.transform = 'translateX(-100px)';
-            card.style.opacity = '0';
-            setTimeout(() => askDelete(taskId), 280);
+        card.style.opacity = String(1 - Math.abs(clamp) / 240);
+
+        // Màu gợi ý
+        if (dx > 15) {
+            card.style.outline = '2px solid var(--green)';
+            card.style.outlineOffset = '-2px';
+        } else if (dx < -15) {
+            card.style.outline = '2px solid var(--red)';
+            card.style.outlineOffset = '-2px';
         } else {
-            card.style.transform = ''; card.style.opacity = '';
+            card.style.outline = '';
+        }
+
+        // Ngăn scroll dọc khi đang swipe ngang
+        if (e.cancelable) e.preventDefault();
+    }
+
+    function onEnd() {
+        if (selectionMode || locked) return;
+        card.style.outline = '';
+        card.style.transition = 'transform .32s cubic-bezier(.34,1.56,.64,1), opacity .28s, outline .1s';
+
+        if (dx > THRESHOLD) {
+            // Vuốt phải → hoàn thành
+            card.style.transform = 'translateX(110%)';
+            card.style.opacity = '0';
+            setTimeout(() => toggleDone(taskId), 300);
+        } else if (dx < -THRESHOLD) {
+            // Vuốt trái → xóa
+            card.style.transform = 'translateX(-110%)';
+            card.style.opacity = '0';
+            setTimeout(() => askDelete(taskId), 300);
+        } else {
+            // Chưa đủ → trả về
+            card.style.transform = '';
+            card.style.opacity = '';
         }
         swiping = false;
     }
 
-    card.addEventListener('touchstart',  onStart, { passive: true });
-    card.addEventListener('touchmove',   onMove,  { passive: true });
-    card.addEventListener('touchend',    onEnd);
+    // Touch events — passive:false để preventDefault hoạt động
+    card.addEventListener('touchstart', onStart, { passive: true });
+    card.addEventListener('touchmove', onMove, { passive: false });
+    card.addEventListener('touchend', onEnd, { passive: true });
 }
 // ─── LONG PRESS (multi-select) ───────────────────────────────────────────────
 function initLongPress(card, taskId) {
     let pressTimer = null;
-    let isDragging = false;
-    const LONG_PRESS_MS = 500;
-
-    card.addEventListener('dragstart', () => { isDragging = true; clearTimeout(pressTimer); });
-    card.addEventListener('dragend', () => { isDragging = false; });
+    let moved = false;
+    const LONG_PRESS_MS = 480;
 
     function start(e) {
-        if (selectionMode || isDragging) return;
+        if (selectionMode) return;
+        moved = false;
         pressTimer = setTimeout(() => {
-            if (!isDragging) enterSelectionMode(taskId);
+            if (!moved) {
+                if (navigator.vibrate) navigator.vibrate(50);
+                enterSelectionMode(taskId);
+            }
         }, LONG_PRESS_MS);
     }
+
     function cancel() {
         clearTimeout(pressTimer);
     }
 
+    function onMove() {
+        moved = true;
+        clearTimeout(pressTimer);
+    }
+
     card.addEventListener('touchstart', start, { passive: true });
-    card.addEventListener('touchend', cancel);
-    card.addEventListener('touchmove', cancel);
+    card.addEventListener('touchmove', onMove, { passive: true });
+    card.addEventListener('touchend', cancel, { passive: true });
+    card.addEventListener('touchcancel', cancel, { passive: true });
+    // Desktop: giữ chuột
     card.addEventListener('mousedown', start);
+    card.addEventListener('mousemove', onMove);
     card.addEventListener('mouseup', cancel);
     card.addEventListener('mouseleave', cancel);
+    card.addEventListener('dragstart', cancel);
 }
-
     
 // ─── STATE ───────────────────────────────────────────────────────────────────
 let tasks = JSON.parse(localStorage.getItem('tf_tasks') || '[]');
@@ -2818,8 +2863,59 @@ function makeTaskCard(t) {
     const recIcon = t.rec && t.rec!=='none'?' 🔁':'';
     const pts = getXPForTask(t);
     const barStyle = isCustom ? `style="background:${catDef.color}"` : '';
-    div.innerHTML =
+    // Hint overlay khi swipe
+div.innerHTML =
         `<div class="task-card-bar" ${barStyle}></div>`
+        +'<div class="task-drag-handle" title="Kéo thả">⠿</div>'
+        +'<div class="task-check" onclick="event.stopPropagation();'+(selectionMode ? 'toggleSelectTask('+t.id+')' : 'toggleDone('+t.id+')')+'">'+(selectionMode ? (selectedIds.has(t.id)?'✓':'') : (t.done?'✓':''))+'</div>'
+        +'<div class="task-body">'
+        +'<div class="task-title">'+escHtml(t.title)+'</div>'
+        +'<div class="task-meta">'
+        +(t.time?'<span class="task-time">⏰ '+t.time+(t.duration?' ('+t.duration+'p)':'')+'</span>':'')
+        +'<span class="task-tag" style="background:'+catDef.color+'22;color:'+catDef.color+'">'+getCatLabel(t.cat)+'</span>'
+        +'<span class="task-pri">'+priIcon+recIcon+'</span>'
+        +(xpEnabled && !t.done ? '<span class="task-pts">+'+pts+' XP</span>' : '')
+        +(t.deadline ? (() => {
+        const days = Math.ceil((new Date(t.deadline) - new Date(todayStr())) / 86400000);
+        const color = days < 0 ? 'var(--red)' : days <= 2 ? 'var(--red)' : days <= 7 ? 'var(--yellow)' : 'var(--text2)';
+        const label = days < 0 ? `Quá hạn ${-days}n` : days === 0 ? 'Hôm nay!' : `Còn ${days}n`;
+        return `<span class="task-time" style="color:${color};font-weight:700">📅 ${label}</span>`;
+        })() : '')
+        +(t.voice ? '<span class="task-voice-indicator" onclick="event.stopPropagation();toggleVoicePlay('+t.id+')" title="Nghe ghi âm">🎙️ '+(t.voice.duration||0)+'s</span>' : '')
+        +'</div>'
+        +(t.note?'<div class="note-rendered">'+(()=>{try{return marked.parse(t.note)}catch(e){return escHtml(t.note)}})()+'</div>':'')
+        +(t.subtasks && t.subtasks.length ? renderSubtasksMini(t) : '')
+        +'</div>'
+        +'<div class="task-actions">'
+        +'<button class="task-btn" onclick="event.stopPropagation();openEdit('+t.id+')" title="Sửa">✏️</button>'
+        +'<button class="task-btn" onclick="event.stopPropagation();askDelete('+t.id+')" title="Xóa">🗑️</button>'
+        +'</div>';
+
+    // Thêm swipe hints SAU khi innerHTML đã xong
+    if (!selectionMode) {
+        const leftHint = document.createElement('div');
+        leftHint.style.cssText = 'position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:22px;opacity:0;pointer-events:none;transition:opacity .12s;z-index:3;user-select:none';
+        leftHint.textContent = '🗑️';
+
+        const rightHint = document.createElement('div');
+        rightHint.style.cssText = 'position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:22px;opacity:0;pointer-events:none;transition:opacity .12s;z-index:3;user-select:none';
+        rightHint.textContent = '✅';
+
+        div.appendChild(leftHint);
+        div.appendChild(rightHint);
+
+        const obs = new MutationObserver(() => {
+            const m = div.style.transform.match(/translateX\((-?[\d.]+)/);
+            if (m) {
+                const x = parseFloat(m[1]);
+                leftHint.style.opacity  = x < -15 ? String(Math.min(1, (-x-15)/50)) : '0';
+                rightHint.style.opacity = x >  15 ? String(Math.min(1, (x-15)/50))  : '0';
+            } else {
+                leftHint.style.opacity = rightHint.style.opacity = '0';
+            }
+        });
+        obs.observe(div, { attributes: true, attributeFilter: ['style'] });
+    }
         +'<div class="task-drag-handle" title="Kéo thả">⠿</div>'
 +'<div class="task-check" onclick="event.stopPropagation();'+(selectionMode ? 'toggleSelectTask('+t.id+')' : 'toggleDone('+t.id+')')+'">'+(selectionMode ? (selectedIds.has(t.id)?'✓':'') : (t.done?'✓':''))+'</div>'
         +'<div class="task-body">'
