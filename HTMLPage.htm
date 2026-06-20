@@ -1259,7 +1259,8 @@ body::before {
         Gán task cho thành viên
       </div>
       <div id="roomTaskAssignList" style="display:flex;flex-direction:column;gap:6px"></div>
-    </div>
+             <button onclick="roomAddTask()" id="roomAddTaskBtn" style="display:none;width:100%;margin-top:10px;padding:11px;border-radius:var(--radius);background:var(--accent-glow);border:1px solid var(--accent);color:var(--accent);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s">＋ Thêm task mới vào phòng</button>
+        </div>
   </div>
 </div>
 
@@ -2371,46 +2372,109 @@ async function refreshRoomPanel() {
     </div>`;
   }).join('');
 
-  const { data: rtasks } = await _sbc.from('room_tasks')
+const { data: rtasks } = await _sbc.from('room_tasks')
     .select('*').eq('room_code', currentRoom.code)
-    .order('id', { ascending: false }).limit(15);
+    .order('id', { ascending: false }).limit(30);
   const tal = document.getElementById('roomTaskAssignList');
   if (!tal) return;
+
+  // Hiện nút thêm task
+  const addBtn = document.getElementById('roomAddTaskBtn');
+  if (addBtn) addBtn.style.display = 'block';
+
   if (!rtasks || !rtasks.length) {
-    tal.innerHTML = '<div style="font-size:12px;color:var(--text3)">Chưa có task nào trong phòng.</div>';
+    tal.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">Chưa có task nào trong phòng. Nhấn nút bên dưới để thêm!</div>';
   } else {
-    tal.innerHTML = rtasks.map(r => {
+    tal.innerHTML = '';
+    rtasks.forEach(r => {
       const t = r.task;
+      if (!t) return;
       const assignee = roomMembers.find(m => m.uid === t.assignedTo);
       const [aEmoji, aColor] = assignee ? (assignee.avatar || '😀|#638cff').split('|') : [];
-      return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;
-        background:var(--surface);border-radius:10px;border:1px solid var(--border)">
-        <div style="flex:1;font-size:12px;font-weight:600;color:var(--text);
-          white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(t.title)}</div>
-        ${assignee
-          ? `<div class="room-avatar" style="background:${aColor};margin-left:0;
-              width:22px;height:22px;font-size:11px" title="${escHtml(assignee.name)}">${aEmoji}</div>`
-          : ''}
-        <div style="position:relative">
-          <button class="assign-btn" onclick="toggleAssignDropdown(event,${t.id})">
-            ${assignee ? '✎ Đổi' : '＋ Gán'}
-          </button>
-          <div class="assign-dropdown" id="dd_${t.id}" style="display:none">
-            ${roomMembers.map(m => {
-              const [mEmoji, mColor] = (m.avatar || '😀|#638cff').split('|');
-              return `<div class="assign-option"
-                onclick="assignTask(${t.id},'${m.uid}');closeAllDropdowns()">
-                <div class="room-avatar" style="background:${mColor};margin-left:0;
-                  width:22px;height:22px;font-size:11px">${mEmoji}</div>
-                ${escHtml(m.name)}
-              </div>`;
-            }).join('')}
-            <div class="assign-option" style="color:var(--text3)"
-              onclick="assignTask(${t.id},'');closeAllDropdowns()">✕ Bỏ gán</div>
-          </div>
-        </div>
-      </div>`;
-    }).join('');
+
+      const row = document.createElement('div');
+      row.style.cssText = 'background:var(--surface);border-radius:10px;border:1px solid var(--border);padding:8px 10px;display:flex;flex-direction:column;gap:6px';
+
+      // Hàng 1: title + done toggle
+      const titleRow = document.createElement('div');
+      titleRow.style.cssText = 'display:flex;align-items:center;gap:6px';
+
+      // Checkbox done
+      const doneBtn = document.createElement('button');
+      doneBtn.style.cssText = `width:20px;height:20px;border-radius:50%;border:2px solid ${t.done ? 'var(--green)' : 'var(--border2)'};background:${t.done ? 'var(--green)' : 'transparent'};color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s`;
+      doneBtn.textContent = t.done ? '✓' : '';
+      doneBtn.title = t.done ? 'Đánh dấu chưa xong' : 'Đánh dấu xong';
+      doneBtn.onclick = () => roomToggleDone(t.id);
+
+      // Title - có thể edit inline
+      const titleEl = document.createElement('div');
+      titleEl.style.cssText = `flex:1;font-size:13px;font-weight:600;color:${t.done ? 'var(--text3)' : 'var(--text)'};text-decoration:${t.done ? 'line-through' : 'none'};min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap`;
+      titleEl.textContent = t.title;
+      titleEl.title = t.title;
+
+      titleRow.appendChild(doneBtn);
+      titleRow.appendChild(titleEl);
+
+      // Hàng 2: assignee + các nút action
+      const actionRow = document.createElement('div');
+      actionRow.style.cssText = 'display:flex;align-items:center;gap:5px;flex-wrap:wrap';
+
+      // Assignee badge
+      if (assignee) {
+        const badge = document.createElement('div');
+        badge.style.cssText = `display:flex;align-items:center;gap:4px;background:${aColor}22;border:1px solid ${aColor};border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;color:${aColor}`;
+        badge.innerHTML = `<span>${aEmoji}</span><span>${escHtml(assignee.name)}</span>`;
+        actionRow.appendChild(badge);
+      }
+
+      // Spacer
+      const spacer = document.createElement('div');
+      spacer.style.flex = '1';
+      actionRow.appendChild(spacer);
+
+      // Nút Sửa tên
+      const editBtn = document.createElement('button');
+      editBtn.style.cssText = 'padding:4px 9px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-family:inherit;transition:all .2s';
+      editBtn.textContent = '✏️ Sửa';
+      editBtn.onclick = () => roomEditTask(t.id);
+      actionRow.appendChild(editBtn);
+
+      // Nút Xóa
+      const delBtn = document.createElement('button');
+      delBtn.style.cssText = 'padding:4px 9px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--red);background:var(--red-soft);color:var(--red);font-family:inherit;transition:all .2s';
+      delBtn.textContent = '🗑️';
+      delBtn.onclick = () => roomDeleteTask(t.id);
+      actionRow.appendChild(delBtn);
+
+      // Nút Gán (dropdown)
+      const assignWrap = document.createElement('div');
+      assignWrap.style.position = 'relative';
+
+      const assignBtn = document.createElement('button');
+      assignBtn.className = 'assign-btn';
+      assignBtn.textContent = assignee ? '👤 Đổi' : '＋ Gán';
+      assignBtn.onclick = (e) => toggleAssignDropdown(e, t.id);
+      assignWrap.appendChild(assignBtn);
+
+      const dropdown = document.createElement('div');
+      dropdown.className = 'assign-dropdown';
+      dropdown.id = 'dd_' + t.id;
+      dropdown.style.display = 'none';
+      dropdown.innerHTML = roomMembers.map(m => {
+        const [mEmoji, mColor] = (m.avatar || '😀|#638cff').split('|');
+        return `<div class="assign-option" onclick="assignTask(${t.id},'${m.uid}');closeAllDropdowns()">
+          <div class="room-avatar" style="background:${mColor};margin-left:0;width:22px;height:22px;font-size:11px">${mEmoji}</div>
+          ${escHtml(m.name)}
+        </div>`;
+      }).join('') + `<div class="assign-option" style="color:var(--text3)" onclick="assignTask(${t.id},'');closeAllDropdowns()">✕ Bỏ gán</div>`;
+
+      assignWrap.appendChild(dropdown);
+      actionRow.appendChild(assignWrap);
+
+      row.appendChild(titleRow);
+      row.appendChild(actionRow);
+      tal.appendChild(row);
+    });
   }
   updateRoomBar();
 }
@@ -2457,7 +2521,105 @@ function updateRoomBar() {
       title="${escHtml(m.name)}">${emoji}</div>`;
   }).join('');
 }
+// ─── ROOM TASK ACTIONS ───────────────────────────────────────────────────────
+async function roomAddTask() {
+  if (!currentRoom) return;
+  const title = prompt('Nhập tên task mới:');
+  if (!title || !title.trim()) return;
+  const newTask = {
+    id: Date.now(),
+    title: title.trim(),
+    note: '',
+    date: todayStr(),
+    time: '',
+    duration: 60,
+    deadline: '',
+    cat: 'work',
+    pri: 'med',
+    rec: 'none',
+    done: false,
+    ts: Date.now(),
+    assignedTo: null
+  };
+  tasks.push(newTask);
+  save();
+  try {
+    await _sbc.from('room_tasks').upsert(
+      { id: newTask.id, room_code: currentRoom.code,
+        task: newTask, updated_at: new Date().toISOString() },
+      { onConflict: 'id' }
+    );
+    showToast('✅ Đã thêm task "' + newTask.title + '" vào phòng!');
+  } catch(e) {
+    showToast('Lỗi thêm task: ' + e.message, 'warning');
+  }
+  await refreshRoomPanel();
+  renderCurrent();
+}
 
+async function roomEditTask(taskId) {
+  if (!currentRoom) return;
+  const t = tasks.find(x => x.id === taskId);
+  const oldTitle = t ? t.title : '';
+  const newTitle = prompt('Sửa tên task:', oldTitle);
+  if (!newTitle || !newTitle.trim()) return;
+  if (newTitle.trim() === oldTitle) return;
+  if (t) {
+    t.title = newTitle.trim();
+    save();
+  }
+  try {
+    const taskData = t ? { ...t } : { id: taskId, title: newTitle.trim(), done: false };
+    await _sbc.from('room_tasks').upsert(
+      { id: taskId, room_code: currentRoom.code,
+        task: taskData, updated_at: new Date().toISOString() },
+      { onConflict: 'id' }
+    );
+    showToast('✏️ Đã sửa thành "' + newTitle.trim() + '"!');
+  } catch(e) {
+    showToast('Lỗi sửa task: ' + e.message, 'warning');
+  }
+  await refreshRoomPanel();
+  renderCurrent();
+}
+
+async function roomDeleteTask(taskId) {
+  if (!currentRoom) return;
+  const t = tasks.find(x => x.id === taskId);
+  const name = t ? t.title : 'task này';
+  if (!confirm('Xóa "' + name + '" khỏi phòng?\n(Sẽ xóa của tất cả thành viên)')) return;
+  tasks = tasks.filter(x => x.id !== taskId);
+  save();
+  try {
+    await _sbc.from('room_tasks').delete().eq('id', taskId).eq('room_code', currentRoom.code);
+    showToast('🗑️ Đã xóa "' + name + '"!', 'warning');
+  } catch(e) {
+    showToast('Lỗi xóa task: ' + e.message, 'warning');
+  }
+  await refreshRoomPanel();
+  renderCurrent();
+}
+
+async function roomToggleDone(taskId) {
+  if (!currentRoom) return;
+  const t = tasks.find(x => x.id === taskId);
+  if (!t) return;
+  t.done = !t.done;
+  save();
+  if (t.done && xpEnabled) { awardXP(t); }
+  try {
+    await _sbc.from('room_tasks').upsert(
+      { id: taskId, room_code: currentRoom.code,
+        task: { ...t }, updated_at: new Date().toISOString() },
+      { onConflict: 'id' }
+    );
+    showToast(t.done ? '✅ Hoàn thành! +XP' : '↩️ Đã bỏ hoàn thành');
+  } catch(e) {
+    showToast('Lỗi cập nhật: ' + e.message, 'warning');
+  }
+  await refreshRoomPanel();
+  renderCurrent();
+}
 function subscribeRoom(code) {
   if (roomChannel) _sbc.removeChannel(roomChannel);
   roomChannel = _sbc
