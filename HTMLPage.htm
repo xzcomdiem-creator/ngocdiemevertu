@@ -458,6 +458,35 @@
 
         /* ─ SWIPE HINT ─ */
         .swipe-hint { font-size:10px; color:var(--text3); text-align:center; padding:4px 0 8px; opacity:.6 }
+        /* ─ SWIPE HINTS FIX ─ */
+.task-card { touch-action: pan-y; }
+
+/* Khi selection mode: disable hover transform */
+.task-card.selecting:hover {
+    transform: scale(.985) !important;
+}
+
+/* Bulk bar slide up animation */
+.bulk-bar {
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1), opacity .25s;
+    transform: translateY(120%);
+    opacity: 0;
+}
+.bulk-bar.open {
+    display: flex !important;
+    transform: translateY(0);
+    opacity: 1;
+}
+
+/* Swipe background indicators */
+.task-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius);
+    pointer-events: none;
+    transition: background .15s;
+}
         /* ─ HABIT TRACKER ─ */
 .habit-card { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); padding:13px 14px; margin-bottom:10px }
 .habit-header { display:flex; align-items:center; gap:10px; margin-bottom:10px }
