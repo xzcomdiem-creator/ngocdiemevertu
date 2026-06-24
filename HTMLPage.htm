@@ -757,6 +757,18 @@ body::before {
     touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
 }
+/* ─ TRASH ─ */
+.trash-overlay { position:fixed; inset:0; z-index:300; background:rgba(0,0,0,.8); backdrop-filter:blur(8px); display:flex; align-items:flex-end; opacity:0; pointer-events:none; transition:opacity .3s }
+.trash-overlay.open { opacity:1; pointer-events:all }
+.trash-sheet { background:var(--bg2); border:1px solid var(--border2); border-radius:24px 24px 0 0; padding:0 18px calc(env(safe-area-inset-bottom,0px)+24px); width:100%; max-height:92vh; overflow-y:auto; transform:translateY(100%); transition:transform .38s cubic-bezier(.34,1.56,.64,1) }
+.trash-overlay.open .trash-sheet { transform:translateY(0) }
+.trash-item { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:11px 13px; margin-bottom:8px; display:flex; align-items:center; gap:10px }
+.trash-item-body { flex:1; min-width:0 }
+.trash-item-title { font-size:13px; font-weight:600; color:var(--text); text-decoration:line-through; opacity:.7 }
+.trash-item-meta { font-size:10px; color:var(--text3); margin-top:3px; font-family:'JetBrains Mono',monospace }
+.trash-restore-btn { padding:5px 10px; border-radius:6px; background:var(--green-soft); border:1px solid var(--green); color:var(--green); font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap }
+.trash-del-btn { padding:5px 10px; border-radius:6px; background:var(--red-soft); border:1px solid var(--red); color:var(--red); font-size:11px; font-weight:700; cursor:pointer }
+.trash-expire { font-size:9px; color:var(--text3); margin-top:2px }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -906,6 +918,8 @@ body::before {
     </div>
     <button class="rec-opt" onclick="enterSelectionModeManual()" style="flex-shrink:0">☑️ Chọn</button>
     <button class="rec-opt" onclick="openDeleteAll()" style="flex-shrink:0;border-color:var(--red);color:var(--red)">🗑️ Xóa tất</button>
+    <button class="rec-opt" onclick="openTrash()" style="flex-shrink:0;border-color:var(--orange);color:var(--orange)">♻️ Thùng rác</button>
+
 </div>
         <div class="swipe-hint">← Vuốt trái để xóa · Vuốt phải để hoàn thành →</div>
         <div id="todayList"></div>
@@ -1236,16 +1250,66 @@ body::before {
         <input class="form-input" id="aiDateInput" type="date">
       </div>
       <div class="form-group">
-        <label class="form-label">Phạm vi kế hoạch</label>
-        <select class="form-input" id="aiScopeInput">
-          <option value="1day">1 ngày</option>
-          <option value="3days">3 ngày</option>
-          <option value="1week" selected>1 tuần</option>
-          <option value="2weeks">2 tuần</option>
-          <option value="1month">1 tháng</option>
+        <label class="form-label">Loại phạm vi</label>
+        <select class="form-input" id="aiScopeType" onchange="updateAIScopeUI()">
+          <option value="preset">Chọn nhanh</option>
+          <option value="custom_days">Số ngày tùy chỉnh</option>
+          <option value="custom_weeks">Số tuần tùy chỉnh</option>
+          <option value="custom_months">Số tháng tùy chỉnh</option>
+          <option value="custom_years">Số năm tùy chỉnh</option>
         </select>
       </div>
     </div>
+
+    <!-- Preset scope -->
+    <div class="form-group" id="aiPresetGroup">
+      <label class="form-label">Phạm vi kế hoạch</label>
+      <select class="form-input" id="aiScopeInput">
+        <option value="1day">1 ngày</option>
+        <option value="3days">3 ngày</option>
+        <option value="1week" selected>1 tuần</option>
+        <option value="2weeks">2 tuần</option>
+        <option value="1month">1 tháng</option>
+        <option value="2months">2 tháng</option>
+        <option value="3months">3 tháng</option>
+        <option value="6months">6 tháng</option>
+        <option value="1year">1 năm</option>
+        <option value="2years">2 năm</option>
+        <option value="3years">3 năm</option>
+      </select>
+    </div>
+
+    <!-- Custom scope -->
+    <div class="form-group" id="aiCustomGroup" style="display:none">
+      <label class="form-label" id="aiCustomLabel">Số ngày</label>
+      <input class="form-input" id="aiCustomValue" type="number" min="1" value="30" placeholder="Nhập số...">
+    </div>
+
+    <!-- Tasks per day setting -->
+    <div class="form-group">
+      <label class="form-label">Số task mỗi ngày (tối đa)</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="tasksPerDayRow">
+        <button class="rec-opt" data-tpd="1" onclick="pickTasksPerDay(this)">1</button>
+        <button class="rec-opt sel" data-tpd="2" onclick="pickTasksPerDay(this)">2</button>
+        <button class="rec-opt" data-tpd="3" onclick="pickTasksPerDay(this)">3</button>
+        <button class="rec-opt" data-tpd="5" onclick="pickTasksPerDay(this)">5</button>
+        <button class="rec-opt" data-tpd="7" onclick="pickTasksPerDay(this)">7</button>
+      </div>
+    </div>
+
+    <!-- Intensity -->
+    <div class="form-group">
+      <label class="form-label">Cường độ kế hoạch</label>
+      <div style="display:flex;gap:6px" id="intensityRow">
+        <button class="rec-opt" data-intensity="light" onclick="pickIntensity(this)">🌱 Nhẹ</button>
+        <button class="rec-opt sel" data-intensity="moderate" onclick="pickIntensity(this)">⚡ Vừa</button>
+        <button class="rec-opt" data-intensity="intense" onclick="pickIntensity(this)">🔥 Cao</button>
+      </div>
+    </div>
+
+    <!-- Summary preview -->
+    <div id="aiScopeSummary" style="background:var(--accent-glow);border:1px solid var(--accent);border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;color:var(--text2);margin-bottom:14px"></div>
+
     <button class="submit-btn" id="aiGenerateBtn" onclick="runAISuggest()">✨ Tạo kế hoạch</button>
     <div id="aiResultWrap" style="margin-top:14px;display:none">
       <div id="aiResultSummary" style="background:var(--accent-glow);border:1px solid var(--accent);
@@ -1331,6 +1395,22 @@ body::before {
     <button class="bulk-btn success" onclick="bulkComplete()">✓ Hoàn thành</button>
     <button class="bulk-btn danger" onclick="bulkDelete()">🗑️ Xóa</button>
     <button class="bulk-btn" onclick="exitSelectionMode()">✕ Hủy</button>
+</div>
+    <!-- TRASH -->
+<div class="trash-overlay" id="ovTrash" onclick="if(event.target===this)closeOverlay('ovTrash')">
+  <div class="trash-sheet">
+    <div class="sheet-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div class="sheet-title" style="margin-bottom:0">🗑️ Thùng rác</div>
+      <div style="display:flex;gap:8px">
+        <button onclick="restoreAllTrash()" style="padding:6px 12px;border-radius:8px;background:var(--green-soft);border:1px solid var(--green);color:var(--green);font-size:12px;font-weight:700;cursor:pointer">↩ Khôi phục tất</button>
+        <button onclick="emptyTrash()" style="padding:6px 12px;border-radius:8px;background:var(--red-soft);border:1px solid var(--red);color:var(--red);font-size:12px;font-weight:700;cursor:pointer">🗑 Xóa hết</button>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:14px">Task bị xóa được giữ lại <strong style="color:var(--text2)">30 ngày</strong> trước khi mất vĩnh viễn.</div>
+    <div id="trashList"></div>
+    <div class="bottom-space"></div>
+  </div>
 </div>
 <!-- TOAST -->
 <div class="toast" id="toast">⭐ <span id="toastMsg"></span></div>
@@ -1616,6 +1696,10 @@ function bulkComplete() {
 }
 function bulkDelete() {
     const count = selectedIds.size;
+    tasks.filter(t => selectedIds.has(t.id)).forEach(t => {
+    trash.push({ ...t, _deletedAt: Date.now() });
+});
+saveTrash();
     tasks = tasks.filter(t => !selectedIds.has(t.id));
     save();
     showToast(`🗑️ Đã xóa ${count} task!`, 'warning');
@@ -3171,6 +3255,9 @@ function closeConfirm() { document.getElementById('ovConfirm').classList.remove(
 function confirmDelete() {
      if (deleteTargetId === '__ALL__') {
         const count = tasks.length;
+        // THÊM 2 DÒNG NÀY trước dòng "tasks = [];"
+        trash.push(...tasks.map(t => ({ ...t, _deletedAt: Date.now() })));
+        saveTrash();
         tasks = [];
         save(); closeConfirm(); renderCurrent();
         if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
@@ -3179,6 +3266,8 @@ function confirmDelete() {
     }
     if (deleteTargetId !== null) {
         const deletedTask = tasks.find(x => x.id === deleteTargetId);
+        trash.push({ ...deletedTask, _deletedAt: Date.now() }); // ← THÊM
+        saveTrash();                                              // ← THÊM
         tasks = tasks.filter(x => x.id !== deleteTargetId);
         if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
         save(); closeConfirm(); renderCurrent();
@@ -3728,6 +3817,87 @@ function toggleSubtask(taskId, idx) {
 }
     // ─── AI SUGGEST ──────────────────────────────────────────────────────────────
 let aiSuggestedTasks = [];
+let aiTasksPerDay = 2;
+let aiIntensity = 'moderate';
+
+function pickTasksPerDay(el) {
+  aiTasksPerDay = parseInt(el.dataset.tpd);
+  document.querySelectorAll('#tasksPerDayRow .rec-opt').forEach(e => e.classList.remove('sel'));
+  el.classList.add('sel');
+  updateAIScopeSummary();
+}
+function pickIntensity(el) {
+  aiIntensity = el.dataset.intensity;
+  document.querySelectorAll('#intensityRow .rec-opt').forEach(e => e.classList.remove('sel'));
+  el.classList.add('sel');
+  updateAIScopeSummary();
+}
+
+function updateAIScopeUI() {
+  const type = document.getElementById('aiScopeType').value;
+  const presetGroup = document.getElementById('aiPresetGroup');
+  const customGroup = document.getElementById('aiCustomGroup');
+  const customLabel = document.getElementById('aiCustomLabel');
+  const customInput = document.getElementById('aiCustomValue');
+  if (type === 'preset') {
+    presetGroup.style.display = 'block';
+    customGroup.style.display = 'none';
+  } else {
+    presetGroup.style.display = 'none';
+    customGroup.style.display = 'block';
+    const labels = { custom_days: 'Số ngày', custom_weeks: 'Số tuần', custom_months: 'Số tháng', custom_years: 'Số năm' };
+    const defaults = { custom_days: 30, custom_weeks: 8, custom_months: 3, custom_years: 1 };
+    customLabel.textContent = labels[type];
+    customInput.value = defaults[type];
+  }
+  updateAIScopeSummary();
+}
+
+function getAIScopeInfo() {
+  const type = document.getElementById('aiScopeType').value;
+  if (type === 'preset') {
+    const val = document.getElementById('aiScopeInput').value;
+    const map = {
+      '1day':    { label: '1 ngày',   days: 1 },
+      '3days':   { label: '3 ngày',   days: 3 },
+      '1week':   { label: '1 tuần',   days: 7 },
+      '2weeks':  { label: '2 tuần',   days: 14 },
+      '1month':  { label: '1 tháng',  days: 30 },
+      '2months': { label: '2 tháng',  days: 60 },
+      '3months': { label: '3 tháng',  days: 90 },
+      '6months': { label: '6 tháng',  days: 180 },
+      '1year':   { label: '1 năm',    days: 365 },
+      '2years':  { label: '2 năm',    days: 730 },
+      '3years':  { label: '3 năm',    days: 1095 },
+    };
+    return map[val] || map['1week'];
+  }
+  const n = parseInt(document.getElementById('aiCustomValue').value) || 1;
+  const multipliers = { custom_days: 1, custom_weeks: 7, custom_months: 30, custom_years: 365 };
+  const unitLabels = { custom_days: 'ngày', custom_weeks: 'tuần', custom_months: 'tháng', custom_years: 'năm' };
+  return { label: `${n} ${unitLabels[type]}`, days: n * multipliers[type] };
+}
+
+function updateAIScopeSummary() {
+  const scope = getAIScopeInfo();
+  const days = scope.days;
+  const activeDays = getActiveDayCount(days);
+  const totalTasks = activeDays * aiTasksPerDay;
+  const intensityMap = { light: '🌱 Nhẹ nhàng', moderate: '⚡ Vừa phải', intense: '🔥 Cường độ cao' };
+  const el = document.getElementById('aiScopeSummary');
+  if (el) el.innerHTML = `📅 <strong style="color:var(--accent)">${scope.label}</strong> · 
+    🗓 <strong style="color:var(--green)">${activeDays} ngày có task</strong> · 
+    ✅ ~<strong style="color:var(--purple)">${totalTasks} task tổng</strong> · 
+    ${intensityMap[aiIntensity]}`;
+}
+
+function getActiveDayCount(totalDays) {
+  if (totalDays <= 7) return totalDays;
+  if (totalDays <= 30) return Math.ceil(totalDays * 0.7);
+  if (totalDays <= 90) return Math.ceil(totalDays * 0.5);
+  if (totalDays <= 365) return Math.ceil(totalDays * 0.35);
+  return Math.ceil(totalDays * 0.2);
+}
 
 function openAISuggest() {
   document.getElementById('aiPromptInput').value = '';
@@ -3737,6 +3907,7 @@ function openAISuggest() {
   document.getElementById('aiError').style.display = 'none';
   document.getElementById('aiResultList').innerHTML = '';
   aiSuggestedTasks = [];
+  updateAIScopeSummary();
   document.getElementById('ovAI').classList.add('open');
   setTimeout(() => document.getElementById('aiPromptInput').focus(), 350);
 }
@@ -3745,56 +3916,72 @@ async function runAISuggest() {
   const prompt = document.getElementById('aiPromptInput').value.trim();
   if (!prompt) { document.getElementById('aiPromptInput').focus(); return; }
   const startDate = document.getElementById('aiDateInput').value || todayStr();
-  const scope = document.getElementById('aiScopeInput').value;
+  const scope = getAIScopeInfo();
+  const totalDays = scope.days;
+  const activeDays = getActiveDayCount(totalDays);
 
-  const scopeMap = {
-    '1day':   { label: '1 ngày',   days: 1,  tasksPerDay: 5 },
-    '3days':  { label: '3 ngày',   days: 3,  tasksPerDay: 4 },
-    '1week':  { label: '1 tuần',   days: 7,  tasksPerDay: 3 },
-    '2weeks': { label: '2 tuần',   days: 14, tasksPerDay: 3 },
-    '1month': { label: '1 tháng',  days: 30, tasksPerDay: 2 },
-  };
-  const sc = scopeMap[scope];
+  const isLongTerm = totalDays > 90;
+  const maxTasks = Math.min(activeDays * aiTasksPerDay, isLongTerm ? 60 : 40);
+
+  const intensityDesc = {
+    light: 'nhẹ nhàng, ít áp lực, phù hợp người bận rộn',
+    moderate: 'cân bằng, vừa sức, có thể duy trì lâu dài',
+    intense: 'cường độ cao, đòi hỏi nỗ lực lớn, kết quả nhanh'
+  }[aiIntensity];
+
+  let planningInstruction = '';
+  if (totalDays <= 14) {
+    const dates = [];
+    for (let i = 0; i < totalDays; i++) {
+      const d = new Date(startDate + 'T00:00:00');
+      d.setDate(d.getDate() + i);
+      dates.push(d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'));
+    }
+    planningInstruction = `Lên kế hoạch CHI TIẾT TỪNG NGÀY cho các ngày: ${dates.join(', ')}\nMỗi ngày ${aiTasksPerDay} task.`;
+  } else if (totalDays <= 90) {
+    const weeks = Math.ceil(totalDays / 7);
+    planningInstruction = `Lên kế hoạch theo TUẦN cho ${weeks} tuần, bắt đầu từ ${startDate}.\n` +
+      `Mỗi tuần chọn ${Math.ceil(activeDays/weeks)} ngày có task.\n` +
+      `Tổng ${maxTasks} task. Sử dụng ngày thực tế (YYYY-MM-DD) từ ${startDate} trở đi.`;
+  } else if (totalDays <= 365) {
+    const months = Math.ceil(totalDays / 30);
+    planningInstruction = `Lên kế hoạch theo THÁNG cho ${months} tháng, bắt đầu từ ${startDate}.\n` +
+      `Mỗi tháng tạo ${Math.ceil(maxTasks/months)} task. Tổng tối đa ${maxTasks} task.\n` +
+      `Sử dụng ngày thực tế (YYYY-MM-DD) từ ${startDate} trở đi.`;
+  } else {
+    const quarters = Math.ceil(totalDays / 90);
+    planningInstruction = `Lên kế hoạch theo QUÝ cho ${quarters} quý, bắt đầu từ ${startDate}.\n` +
+      `Mỗi quý tạo ${Math.ceil(maxTasks/quarters)} task. Tổng tối đa ${maxTasks} task.\n` +
+      `Sử dụng ngày thực tế (YYYY-MM-DD) từ ${startDate} trở đi.`;
+  }
 
   document.getElementById('aiLoading').style.display = 'block';
-  document.getElementById('aiLoadingText').textContent =
-    `Claude đang lên kế hoạch ${sc.label}...`;
+  document.getElementById('aiLoadingText').textContent = `Claude đang lên kế hoạch ${scope.label}...`;
   document.getElementById('aiResultWrap').style.display = 'none';
   document.getElementById('aiError').style.display = 'none';
   document.getElementById('aiGenerateBtn').disabled = true;
 
-  // Tạo danh sách ngày
-  const dates = [];
-  for (let i = 0; i < sc.days; i++) {
-    const d = new Date(startDate + 'T00:00:00');
-    d.setDate(d.getDate() + i);
-    dates.push(d.getFullYear() + '-' +
-      String(d.getMonth()+1).padStart(2,'0') + '-' +
-      String(d.getDate()).padStart(2,'0'));
-  }
+  const systemPrompt = `Bạn là chuyên gia lập kế hoạch cá nhân và quản lý thời gian.
+Nhiệm vụ: tạo kế hoạch ${intensityDesc} cho mục tiêu dài hạn.
 
-  const systemPrompt = `Bạn là chuyên gia lập kế hoạch cá nhân và quản lý thời gian. 
-Nhiệm vụ: tạo kế hoạch CHI TIẾT, THỰC TẾ, CÓ LỘ TRÌNH RÕ RÀNG cho mục tiêu của người dùng.
+NGUYÊN TẮC:
+- Tên task BẮT ĐẦU BẰNG ĐỘNG TỪ cụ thể (Tập, Đọc, Thực hành, Đánh giá, Lên kế hoạch...)
+- note: giải thích ngắn gọn tại sao task này quan trọng ở giai đoạn này
+- Phân bổ giờ hợp lý (6h-22h), duration thực tế
+- Tăng dần độ phức tạp theo thời gian
+- Có các milestone/checkpoint đánh giá tiến độ
+- Cường độ: ${intensityDesc}
 
-NGUYÊN TẮC LẬP KẾ HOẠCH:
-- Mỗi ngày có ${sc.tasksPerDay}-${sc.tasksPerDay+1} task, TĂNG DẦN độ khó theo tuần
-- Ngày đầu: task nhẹ, làm quen, xây nền tảng
-- Giữa kỳ: task chính, tập trung thực hiện
-- Cuối kỳ: task đánh giá, duy trì, cải thiện
-- Tên task BẮT ĐẦU BẰNG ĐỘNG TỪ cụ thể (Tập, Đọc, Viết, Thực hành, Đo, Lên thực đơn...)
-- note: giải thích lý do + cách thực hiện hiệu quả (dùng **bold**)
-- Phân bổ giờ hợp lý trong ngày (6h-22h)
-- duration thực tế theo loại task
-
-ĐỊNH DẠNG JSON (KHÔNG thêm text ngoài JSON):
+ĐỊNH DẠNG JSON (CHỈ JSON, KHÔNG text khác):
 {
-  "plan_summary": "Mô tả tổng quan kế hoạch 1-2 câu",
+  "plan_summary": "Mô tả tổng quan kế hoạch và cách tiếp cận",
+  "phases": ["Tên giai đoạn 1", "Tên giai đoạn 2"],
   "tasks": [
     {
       "title": "Động từ + hành động cụ thể",
       "date": "YYYY-MM-DD",
       "time": "HH:MM",
-      "duration": 45,
+      "duration": 60,
       "cat": "work|personal|health|study|other",
       "pri": "high|med|low",
       "note": "Lý do và cách thực hiện"
@@ -3803,11 +3990,11 @@ NGUYÊN TẮC LẬP KẾ HOẠCH:
 }`;
 
   const userMsg = `Mục tiêu: ${prompt}
-Thời gian: ${sc.label} (từ ${startDate})
-Danh sách ngày cần lên kế hoạch: ${dates.join(', ')}
-Tổng số task tối đa: ${sc.days * (sc.tasksPerDay + 1)}
-
-Hãy tạo kế hoạch có lộ trình tăng dần, thực tế và khả thi.`;
+Thời gian: ${scope.label} (${totalDays} ngày)
+Bắt đầu: ${startDate}
+Cường độ: ${intensityDesc}
+Số task mỗi ngày có task: ${aiTasksPerDay}
+${planningInstruction}`;
 
   try {
     const res = await fetch('https://timeflow.xzcomdiem.workers.dev', {
@@ -3815,12 +4002,11 @@ Hãy tạo kế hoạch có lộ trình tăng dần, thực tế và khả thi.`
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 4000,
+        max_tokens: 8000,
         system: systemPrompt,
         messages: [{ role: 'user', content: userMsg }]
       })
     });
-
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
@@ -3833,129 +4019,36 @@ Hãy tạo kế hoạch có lộ trình tăng dần, thực tế và khả thi.`
     if (!parsed.tasks?.length) throw new Error('Danh sách task trống');
 
     aiSuggestedTasks = parsed.tasks.map((t, i) => ({
-      ...t,
-      rec: 'none',
-      done: false,
-      id: Date.now() + i * 13,
-      ts: Date.now()
+      ...t, rec: 'none', done: false,
+      id: Date.now() + i * 13, ts: Date.now()
     }));
 
-    // Hiển thị summary
-    const sumEl = document.getElementById('aiResultSummary');
-    const totalMin = aiSuggestedTasks.reduce((s,t) => s+(t.duration||0), 0);
-    const totalH = Math.floor(totalMin/60);
-    sumEl.innerHTML = `
-      <div style="font-weight:700;color:var(--text);margin-bottom:4px">
-        📋 ${parsed.plan_summary || 'Kế hoạch ' + sc.label}
+    const totalMin = aiSuggestedTasks.reduce((s, t) => s + (t.duration || 0), 0);
+    const totalH = Math.floor(totalMin / 60);
+    const phases = parsed.phases || [];
+    document.getElementById('aiResultSummary').innerHTML = `
+      <div style="font-weight:700;color:var(--text);margin-bottom:6px">
+        📋 ${parsed.plan_summary || 'Kế hoạch ' + scope.label}
       </div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">
-        <span>📅 <strong style="color:var(--accent)">${sc.label}</strong></span>
+      ${phases.length ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">
+        ${phases.map(p => `<span style="font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:2px 8px;color:var(--text2)">📌 ${p}</span>`).join('')}
+      </div>` : ''}
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <span>📅 <strong style="color:var(--accent)">${scope.label}</strong></span>
         <span>✅ <strong style="color:var(--green)">${aiSuggestedTasks.length} task</strong></span>
-        <span>⏱ <strong style="color:var(--purple)">${totalH}h${totalMin%60>0?' '+totalMin%60+'p':''}</strong> tổng thời gian</span>
+        <span>⏱ <strong style="color:var(--purple)">${totalH}h${totalMin%60>0?' '+totalMin%60+'p':''}</strong></span>
       </div>`;
 
     renderAIResults();
     document.getElementById('aiResultWrap').style.display = 'block';
-    showToast(`✨ Đã tạo ${aiSuggestedTasks.length} task cho ${sc.label}!`);
-
+    showToast(`✨ Đã tạo ${aiSuggestedTasks.length} task cho ${scope.label}!`);
   } catch (e) {
-    document.getElementById('aiError').textContent =
-      '❌ Lỗi: ' + (e.message || 'Không thể kết nối AI.');
+    document.getElementById('aiError').textContent = '❌ Lỗi: ' + (e.message || 'Không thể kết nối AI.');
     document.getElementById('aiError').style.display = 'block';
-    console.error('AI Error:', e);
   } finally {
     document.getElementById('aiLoading').style.display = 'none';
     document.getElementById('aiGenerateBtn').disabled = false;
   }
-}
-function renderAIResults() {
-  const list = document.getElementById('aiResultList');
-  const catColors = {
-    work:'var(--accent)', personal:'var(--green)',
-    health:'var(--red)', study:'var(--purple)', other:'var(--yellow)'
-  };
-  const catLabels = {
-    work:'💼 Công việc', personal:'🏠 Cá nhân',
-    health:'💪 Sức khỏe', study:'📚 Học tập', other:'⭐ Khác'
-  };
-  const priLabel = { high:'🔴 Cao', med:'🟡 Vừa', low:'🟢 Thấp' };
-  const priColors = { high:'var(--red)', med:'var(--yellow)', low:'var(--green)' };
-
-  list.innerHTML = '';
-
-  // Nhóm task theo ngày
-  const byDate = {};
-  aiSuggestedTasks.forEach(t => {
-    if (!byDate[t.date]) byDate[t.date] = [];
-    byDate[t.date].push(t);
-  });
-
-  const dayNames = ['CN','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'];
-  let taskIndex = 0;
-
-  Object.keys(byDate).sort().forEach(date => {
-    const dayTasks = byDate[date];
-    const d = new Date(date + 'T00:00:00');
-    const dayName = dayNames[d.getDay()];
-    const dateLabel = `${dayName}, ${d.getDate()}/${d.getMonth()+1}`;
-
-    // Header ngày
-    const dayHeader = document.createElement('div');
-    dayHeader.style.cssText = `display:flex;align-items:center;gap:8px;
-      margin:12px 0 6px;padding:6px 10px;
-      background:var(--surface2);border-radius:8px;
-      font-size:12px;font-weight:700;color:var(--text2)`;
-    dayHeader.innerHTML = `📅 ${dateLabel}
-      <span style="margin-left:auto;font-size:10px;color:var(--text3);font-weight:400">
-        ${dayTasks.length} task
-      </span>`;
-    list.appendChild(dayHeader);
-
-    // Task cards
-    dayTasks.forEach(t => {
-      const i = taskIndex++;
-      const div = document.createElement('div');
-      div.style.cssText = `background:var(--bg3);border:1px solid var(--border);
-        border-radius:var(--radius);padding:11px 13px;margin-bottom:7px;
-        display:flex;gap:10px;align-items:flex-start;
-        border-left:3px solid ${catColors[t.cat]||'var(--accent)'}`;
-      div.innerHTML = `
-        <input type="checkbox" checked
-          style="margin-top:3px;accent-color:var(--accent);
-            width:16px;height:16px;flex-shrink:0;cursor:pointer"
-          id="aiChk_${i}">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;color:var(--text);
-            margin-bottom:5px;line-height:1.4">
-            ${escHtml(t.title)}
-          </div>
-          <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:5px">
-            <span style="font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace;
-              background:var(--surface2);padding:2px 6px;border-radius:5px">
-              ⏰ ${t.time}
-            </span>
-            <span style="font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace;
-              background:var(--surface2);padding:2px 6px;border-radius:5px">
-              ⏱ ${t.duration}p
-            </span>
-            <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;
-              background:${catColors[t.cat]||'var(--accent)'}22;
-              color:${catColors[t.cat]||'var(--accent)'}">
-              ${catLabels[t.cat]||t.cat}
-            </span>
-            <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;
-              background:${priColors[t.pri]}22;color:${priColors[t.pri]}">
-              ${priLabel[t.pri]||t.pri}
-            </span>
-          </div>
-          ${t.note ? `<div style="font-size:11px;color:var(--text2);line-height:1.6;
-            background:var(--surface2);border-radius:6px;padding:7px 9px">
-            ${(()=>{try{return marked.parse(t.note)}catch(e){return escHtml(t.note)}})()}
-          </div>` : ''}
-        </div>`;
-      list.appendChild(div);
-    });
-  });
 }
 
 function addAllAITasks() {
@@ -3968,6 +4061,13 @@ function addAllAITasks() {
   save(); closeOverlay('ovAI'); renderCurrent();
   showToast(`✨ Đã thêm ${count} task từ AI!`);
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  ['aiScopeInput','aiCustomValue','aiScopeType'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', updateAIScopeSummary);
+  });
+});
 // ─── INIT ────────────────────────────────────────────────────────────────────
     // ─── TASK COLOR PICKER ───────────────────────────────────────────────────────
 function renderTaskColorGrid() {
@@ -4163,6 +4263,87 @@ function openDeleteAll() {
 function enterSelectionModeManual() {
     enterSelectionMode();
     showToast('☑️ Nhấn vào task để chọn');
+}
+// ─── TRASH (THÙNG RÁC) ───────────────────────────────────────────────────────
+let trash = JSON.parse(localStorage.getItem('tf_trash') || '[]');
+function saveTrash() { localStorage.setItem('tf_trash', JSON.stringify(trash)); }
+
+// Dọn task hết hạn 30 ngày
+function cleanExpiredTrash() {
+    const limit = 30 * 24 * 60 * 60 * 1000;
+    const before = trash.length;
+    trash = trash.filter(t => Date.now() - (t._deletedAt || 0) < limit);
+    if (trash.length !== before) saveTrash();
+}
+
+function openTrash() {
+    cleanExpiredTrash();
+    renderTrashList();
+    document.getElementById('ovTrash').classList.add('open');
+}
+
+function renderTrashList() {
+    const list = document.getElementById('trashList');
+    if (!trash.length) {
+        list.innerHTML = '<div class="empty-state"><div class="empty-icon">🗑️</div><div class="empty-text">Thùng rác trống.<br>Task bị xóa sẽ xuất hiện ở đây.</div></div>';
+        return;
+    }
+    // Sắp xếp mới nhất lên đầu
+    const sorted = [...trash].sort((a, b) => (b._deletedAt || 0) - (a._deletedAt || 0));
+    list.innerHTML = '';
+    sorted.forEach(t => {
+        const daysLeft = Math.ceil((30 * 86400000 - (Date.now() - (t._deletedAt || 0))) / 86400000);
+        const deletedDate = new Date(t._deletedAt || 0).toLocaleDateString('vi-VN');
+        const div = document.createElement('div');
+        div.className = 'trash-item';
+        div.innerHTML = `
+            <div class="trash-item-body">
+                <div class="trash-item-title">${escHtml(t.title)}</div>
+                <div class="trash-item-meta">📅 ${t.date || ''}  ⏰ ${t.time || ''}  🏷 ${getCatLabel(t.cat)}</div>
+                <div class="trash-expire">Đã xóa ${deletedDate} · còn ${daysLeft} ngày trước khi mất vĩnh viễn</div>
+            </div>
+            <button class="trash-restore-btn" onclick="restoreTrashItem(${t.id})">↩ Khôi phục</button>
+            <button class="trash-del-btn" onclick="deleteTrashItem(${t.id})">✕</button>`;
+        list.appendChild(div);
+    });
+}
+
+function restoreTrashItem(id) {
+    const idx = trash.findIndex(t => t.id === id);
+    if (idx === -1) return;
+    const t = { ...trash[idx] };
+    delete t._deletedAt;
+    t.done = false;
+    tasks.push(t);
+    trash.splice(idx, 1);
+    save(); saveTrash();
+    renderTrashList(); renderCurrent();
+    showToast('↩️ Đã khôi phục "' + t.title.substring(0, 20) + '"');
+}
+
+function deleteTrashItem(id) {
+    trash = trash.filter(t => t.id !== id);
+    saveTrash();
+    renderTrashList();
+    showToast('Đã xóa vĩnh viễn', 'warning');
+}
+
+function restoreAllTrash() {
+    if (!trash.length) return;
+    trash.forEach(t => { const r = {...t}; delete r._deletedAt; r.done = false; tasks.push(r); });
+    trash = [];
+    save(); saveTrash();
+    renderTrashList(); renderCurrent();
+    showToast('↩️ Đã khôi phục tất cả task!');
+}
+
+function emptyTrash() {
+    if (!trash.length) return;
+    if (!confirm('Xóa vĩnh viễn ' + trash.length + ' task? Không thể hoàn tác!')) return;
+    trash = [];
+    saveTrash();
+    renderTrashList();
+    showToast('🗑️ Đã dọn sạch thùng rác', 'warning');
 }
 generateRecurringTasks();
 if ('serviceWorker' in navigator) {
