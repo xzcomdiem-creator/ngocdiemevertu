@@ -3716,71 +3716,135 @@ async function runAISuggest() {
   document.getElementById('aiError').style.display = 'none';
   document.getElementById('aiGenerateBtn').disabled = true;
 
-  const systemPrompt = `Bạn là trợ lý quản lý thời gian thông minh. Người dùng mô tả một dự án hoặc mục tiêu. Hãy breakdown thành danh sách task cụ thể.
-Trả về ĐÚNG định dạng JSON sau, không thêm bất kỳ text nào khác:
-{"tasks":[{"title":"tên task","time":"HH:MM","duration":60,"cat":"work|personal|health|study|other","pri":"high|med|low","note":"ghi chú ngắn"}]}
-Quy tắc:
-- 3 đến 8 task, thực tế và có thể thực hiện được
-- time theo 24h, phân bổ hợp lý trong ngày (8:00 - 21:00)
-- duration tính bằng phút
-- cat chọn phù hợp nhất
-- note ngắn gọn bằng tiếng Việt, có thể dùng markdown (bold, bullet)`;
+  const systemPrompt = `Bạn là chuyên gia quản lý thời gian và năng suất cá nhân. Nhiệm vụ: phân tích mục tiêu/dự án của người dùng và tạo danh sách task CỤ THỂ, THỰC TẾ, CÓ THỂ THỰC HIỆN ĐƯỢC trong 1 ngày.
 
- try {
+QUY TẮC QUAN TRỌNG:
+1. Tạo 4-7 task, mỗi task là 1 hành động cụ thể có thể hoàn thành trong 1 ngày
+2. Tên task phải RÕ RÀNG, bắt đầu bằng động từ hành động (Viết, Đọc, Nghiên cứu, Gọi điện, Chuẩn bị...)
+3. Phân bổ giờ HỢP LÝ: task khó/quan trọng vào buổi sáng (8h-11h), task nhẹ vào chiều (13h-17h), ôn tập/review vào tối (19h-21h)
+4. duration phải THỰC TẾ: đọc tài liệu 30-60p, viết báo cáo 60-120p, họp/gọi điện 30-60p, nghiên cứu 45-90p
+5. pri: high = deadline gấp hoặc quan trọng nhất, med = bình thường, low = có thể để sau
+6. cat: work=công việc/học tập chuyên môn, study=học/nghiên cứu, personal=việc cá nhân/gia đình, health=sức khỏe/thể dục, other=khác
+7. note: giải thích ngắn TẠI SAO task này quan trọng + gợi ý cách làm hiệu quả (dùng **bold** cho điểm quan trọng)
+
+Trả về JSON hợp lệ, KHÔNG thêm text hay markdown bên ngoài JSON:
+{"tasks":[{"title":"Động từ + hành động cụ thể","time":"HH:MM","duration":60,"cat":"work|personal|health|study|other","pri":"high|med|low","note":"Lý do quan trọng và tip thực hiện"}]}`;
+
+  const userMsg = `Mục tiêu/dự án: ${prompt}
+Ngày thực hiện: ${startDate}
+Hãy tạo kế hoạch task chi tiết, thực tế và có thể hoàn thành trong ngày này.`;
+
+  try {
     const res = await fetch('https://timeflow.xzcomdiem.workers.dev', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
+        max_tokens: 2000,
         system: systemPrompt,
-        messages: [{ role: 'user', content: `Dự án: ${prompt}\nNgày bắt đầu: ${startDate}` }]
+        messages: [{ role: 'user', content: userMsg }]
       })
     });
+
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    console.log('AI response:', JSON.stringify(data));
     if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-    if (!data.content || !data.content.length) throw new Error('Không có nội dung: ' + JSON.stringify(data));
+    if (!data.content?.length) throw new Error('Phản hồi rỗng');
+
     const raw = data.content.map(b => b.text || '').join('').trim();
-    if (!raw) throw new Error('Phản hồi rỗng');
-    const clean = raw.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(clean);
+    // Tìm JSON trong response dù có text thừa
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Không tìm thấy JSON trong phản hồi');
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (!parsed.tasks?.length) throw new Error('Danh sách task trống');
+
     aiSuggestedTasks = parsed.tasks.map((t, i) => ({
-      ...t, date: startDate, rec: 'none', done: false, id: Date.now() + i, ts: Date.now()
+      ...t,
+      date: startDate,
+      rec: 'none',
+      done: false,
+      id: Date.now() + i * 7,
+      ts: Date.now()
     }));
+
     renderAIResults();
     document.getElementById('aiResultWrap').style.display = 'block';
+    showToast(`✨ AI đề xuất ${aiSuggestedTasks.length} task!`);
+
   } catch (e) {
     const errEl = document.getElementById('aiError');
-    errEl.textContent = 'Lỗi: ' + (e.message || 'Không thể kết nối AI. Thử lại sau.');
+    errEl.textContent = '❌ Lỗi: ' + (e.message || 'Không thể kết nối AI. Kiểm tra mạng và thử lại.');
     errEl.style.display = 'block';
+    console.error('AI Error:', e);
   } finally {
     document.getElementById('aiLoading').style.display = 'none';
     document.getElementById('aiGenerateBtn').disabled = false;
   }
 }
-
 function renderAIResults() {
   const list = document.getElementById('aiResultList');
-  const catColors = { work:'var(--accent)', personal:'var(--green)', health:'var(--red)', study:'var(--purple)', other:'var(--yellow)' };
-  const priIcon = { high:'🔴', med:'🟡', low:'🟢' };
+  const catColors = {
+    work:'var(--accent)', personal:'var(--green)',
+    health:'var(--red)', study:'var(--purple)', other:'var(--yellow)'
+  };
+  const catLabels = {
+    work:'💼 Công việc', personal:'🏠 Cá nhân',
+    health:'💪 Sức khỏe', study:'📚 Học tập', other:'⭐ Khác'
+  };
+  const priLabel = { high:'🔴 Cao', med:'🟡 Vừa', low:'🟢 Thấp' };
+  const priColors = { high:'var(--red)', med:'var(--yellow)', low:'var(--green)' };
+
   list.innerHTML = '';
   aiSuggestedTasks.forEach((t, i) => {
     const div = document.createElement('div');
-    div.style.cssText = 'background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:7px;display:flex;gap:10px;align-items:flex-start';
+    div.style.cssText = `background:var(--bg3);border:1px solid var(--border);
+      border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;
+      display:flex;gap:10px;align-items:flex-start;
+      border-left:3px solid ${catColors[t.cat]||'var(--accent)'}`;
     div.innerHTML = `
-      <input type="checkbox" checked style="margin-top:3px;accent-color:var(--accent);width:16px;height:16px;flex-shrink:0" id="aiChk_${i}">
+      <input type="checkbox" checked
+        style="margin-top:4px;accent-color:var(--accent);width:16px;height:16px;flex-shrink:0;cursor:pointer"
+        id="aiChk_${i}">
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:700;color:var(--text)">${escHtml(t.title)}</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;align-items:center">
-          <span style="font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace">⏰ ${t.time} (${t.duration}p)</span>
-          <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:${catColors[t.cat]}22;color:${catColors[t.cat]}">${getCatLabel(t.cat)}</span>
-          <span style="font-size:11px">${priIcon[t.pri]}</span>
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;line-height:1.4">
+          ${escHtml(t.title)}
         </div>
-${t.note ? '<div class="note-rendered" style="margin-top:5px">'+(()=>{try{return marked.parse(t.note)}catch(e){return escHtml(t.note)}})()+'</div>' : ''}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
+          <span style="font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace;
+            background:var(--surface2);padding:2px 7px;border-radius:6px">
+            ⏰ ${t.time}
+          </span>
+          <span style="font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace;
+            background:var(--surface2);padding:2px 7px;border-radius:6px">
+            ⏱ ${t.duration} phút
+          </span>
+          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
+            background:${catColors[t.cat]||'var(--accent)'}22;color:${catColors[t.cat]||'var(--accent)'}">
+            ${catLabels[t.cat]||t.cat}
+          </span>
+          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
+            background:${priColors[t.pri]}22;color:${priColors[t.pri]}">
+            ${priLabel[t.pri]||t.pri}
+          </span>
+        </div>
+        ${t.note ? `<div style="font-size:12px;color:var(--text2);line-height:1.6;
+          background:var(--surface2);border-radius:8px;padding:8px 10px;margin-top:4px">
+          ${(()=>{try{return marked.parse(t.note)}catch(e){return escHtml(t.note)}})()}
+        </div>` : ''}
       </div>`;
     list.appendChild(div);
   });
+
+  // Thêm tổng kết thời gian
+  const totalMin = aiSuggestedTasks.reduce((s, t) => s + (t.duration||0), 0);
+  const totalH = Math.floor(totalMin/60);
+  const totalM = totalMin%60;
+  const summary = document.createElement('div');
+  summary.style.cssText = `text-align:center;padding:10px;font-size:12px;
+    color:var(--text3);border-top:1px solid var(--border);margin-top:4px`;
+  summary.innerHTML = `📊 Tổng: <strong style="color:var(--accent)">${aiSuggestedTasks.length} task</strong>
+    · <strong style="color:var(--purple)">${totalH > 0 ? totalH+'h ' : ''}${totalM}p</strong> làm việc`;
+  list.appendChild(summary);
 }
 
 function addAllAITasks() {
