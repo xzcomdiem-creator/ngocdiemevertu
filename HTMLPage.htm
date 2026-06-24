@@ -4050,7 +4050,61 @@ ${planningInstruction}`;
     document.getElementById('aiGenerateBtn').disabled = false;
   }
 }
+function renderAIResults() {
+  const list = document.getElementById('aiResultList');
+  if (!list) return;
+  list.innerHTML = '';
 
+  // Nhóm task theo ngày
+  const grouped = {};
+  aiSuggestedTasks.forEach((t, i) => {
+    const key = t.date || 'Không có ngày';
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push({ ...t, _idx: i });
+  });
+
+  Object.keys(grouped).sort().forEach(date => {
+    // Header ngày
+    const dayHeader = document.createElement('div');
+    dayHeader.style.cssText = 'font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.7px;margin:10px 0 5px;padding:0 2px';
+    const d = new Date(date + 'T00:00:00');
+    const dayNames = ['CN','T2','T3','T4','T5','T6','T7'];
+    dayHeader.textContent = `📅 ${dayNames[d.getDay()]} ${date}`;
+    list.appendChild(dayHeader);
+
+    grouped[date].forEach(t => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:flex-start;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:5px';
+
+      // Checkbox chọn
+      const chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.id = 'aiChk_' + t._idx;
+      chk.checked = true;
+      chk.style.cssText = 'width:16px;height:16px;flex-shrink:0;margin-top:2px;accent-color:var(--accent)';
+
+      const body = document.createElement('div');
+      body.style.flex = '1';
+
+      const catDef = getCatDef(t.cat || 'other');
+      const priIcon = t.pri === 'high' ? '🔴' : t.pri === 'med' ? '🟡' : '🟢';
+
+      body.innerHTML = `
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px">${escHtml(t.title)}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          ${t.time ? `<span style="font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace">⏰ ${t.time}${t.duration ? ' ('+t.duration+'p)' : ''}</span>` : ''}
+          <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:${catDef.color}22;color:${catDef.color}">${getCatLabel(t.cat)}</span>
+          <span style="font-size:11px">${priIcon}</span>
+        </div>
+        ${t.note ? `<div style="font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5">${escHtml(t.note)}</div>` : ''}
+      `;
+
+      row.appendChild(chk);
+      row.appendChild(body);
+      list.appendChild(row);
+    });
+  });
+}
 function addAllAITasks() {
   let count = 0;
   aiSuggestedTasks.forEach((t, i) => {
