@@ -1215,30 +1215,53 @@ body::before {
         <button class="submit-btn" onclick="saveHabit()">✓ Lưu thói quen</button>
     </div>
 </div>
-    <!-- AI SUGGEST -->
+   <!-- AI SUGGEST -->
 <div class="overlay" id="ovAI" onclick="if(event.target===this)closeOverlay('ovAI')">
   <div class="sheet">
     <div class="sheet-handle"></div>
     <div class="sheet-title">✨ AI Breakdown Task</div>
     <div class="form-group">
-      <label class="form-label">Mô tả dự án / mục tiêu của bạn</label>
-      <textarea class="form-input form-textarea" id="aiPromptInput" placeholder="VD: Tôi cần chuẩn bị thuyết trình cho khách hàng vào thứ 6..." style="min-height:90px"></textarea>
+      <label class="form-label">Mô tả mục tiêu của bạn</label>
+      <textarea class="form-input form-textarea" id="aiPromptInput"
+        placeholder="VD: Giảm 3kg trong 1 tháng, Học lập trình Python, Chuẩn bị thuyết trình thứ 6..."
+        style="min-height:90px"></textarea>
     </div>
-    <div class="form-group">
-      <label class="form-label">Ngày bắt đầu</label>
-      <input class="form-input" id="aiDateInput" type="date">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Ngày bắt đầu</label>
+        <input class="form-input" id="aiDateInput" type="date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phạm vi kế hoạch</label>
+        <select class="form-input" id="aiScopeInput">
+          <option value="1day">1 ngày</option>
+          <option value="3days">3 ngày</option>
+          <option value="1week" selected>1 tuần</option>
+          <option value="2weeks">2 tuần</option>
+          <option value="1month">1 tháng</option>
+        </select>
+      </div>
     </div>
-    <button class="submit-btn" id="aiGenerateBtn" onclick="runAISuggest()">✨ Tạo danh sách task</button>
+    <button class="submit-btn" id="aiGenerateBtn" onclick="runAISuggest()">✨ Tạo kế hoạch</button>
     <div id="aiResultWrap" style="margin-top:14px;display:none">
-      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">Kết quả gợi ý</div>
+      <div id="aiResultSummary" style="background:var(--accent-glow);border:1px solid var(--accent);
+        border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:10px;font-size:12px;color:var(--text2)"></div>
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;
+        letter-spacing:.7px;margin-bottom:8px">Kết quả gợi ý</div>
       <div id="aiResultList"></div>
-      <button class="submit-btn" onclick="addAllAITasks()" style="margin-top:10px;background:linear-gradient(135deg,var(--green),var(--accent))">＋ Thêm tất cả vào danh sách</button>
+      <button class="submit-btn" onclick="addAllAITasks()"
+        style="margin-top:10px;background:linear-gradient(135deg,var(--green),var(--accent))">
+        ＋ Thêm tất cả vào lịch
+      </button>
     </div>
     <div id="aiLoading" style="display:none;text-align:center;padding:24px 0">
       <div style="font-size:28px;animation:spin 1s linear infinite;display:inline-block">⚙️</div>
-      <div style="font-size:13px;color:var(--text2);margin-top:8px">Claude đang phân tích...</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:8px" id="aiLoadingText">
+        Claude đang lên kế hoạch...
+      </div>
     </div>
-    <div id="aiError" style="display:none;background:var(--red-soft);border:1px solid var(--red);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:var(--red);margin-top:10px"></div>
+    <div id="aiError" style="display:none;background:var(--red-soft);border:1px solid var(--red);
+      border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:var(--red);margin-top:10px"></div>
   </div>
 </div>
     <!-- TEMPLATES -->
@@ -3710,29 +3733,69 @@ async function runAISuggest() {
   const prompt = document.getElementById('aiPromptInput').value.trim();
   if (!prompt) { document.getElementById('aiPromptInput').focus(); return; }
   const startDate = document.getElementById('aiDateInput').value || todayStr();
+  const scope = document.getElementById('aiScopeInput').value;
+
+  const scopeMap = {
+    '1day':   { label: '1 ngày',   days: 1,  tasksPerDay: 5 },
+    '3days':  { label: '3 ngày',   days: 3,  tasksPerDay: 4 },
+    '1week':  { label: '1 tuần',   days: 7,  tasksPerDay: 3 },
+    '2weeks': { label: '2 tuần',   days: 14, tasksPerDay: 3 },
+    '1month': { label: '1 tháng',  days: 30, tasksPerDay: 2 },
+  };
+  const sc = scopeMap[scope];
 
   document.getElementById('aiLoading').style.display = 'block';
+  document.getElementById('aiLoadingText').textContent =
+    `Claude đang lên kế hoạch ${sc.label}...`;
   document.getElementById('aiResultWrap').style.display = 'none';
   document.getElementById('aiError').style.display = 'none';
   document.getElementById('aiGenerateBtn').disabled = true;
 
-  const systemPrompt = `Bạn là chuyên gia quản lý thời gian và năng suất cá nhân. Nhiệm vụ: phân tích mục tiêu/dự án của người dùng và tạo danh sách task CỤ THỂ, THỰC TẾ, CÓ THỂ THỰC HIỆN ĐƯỢC trong 1 ngày.
+  // Tạo danh sách ngày
+  const dates = [];
+  for (let i = 0; i < sc.days; i++) {
+    const d = new Date(startDate + 'T00:00:00');
+    d.setDate(d.getDate() + i);
+    dates.push(d.getFullYear() + '-' +
+      String(d.getMonth()+1).padStart(2,'0') + '-' +
+      String(d.getDate()).padStart(2,'0'));
+  }
 
-QUY TẮC QUAN TRỌNG:
-1. Tạo 4-7 task, mỗi task là 1 hành động cụ thể có thể hoàn thành trong 1 ngày
-2. Tên task phải RÕ RÀNG, bắt đầu bằng động từ hành động (Viết, Đọc, Nghiên cứu, Gọi điện, Chuẩn bị...)
-3. Phân bổ giờ HỢP LÝ: task khó/quan trọng vào buổi sáng (8h-11h), task nhẹ vào chiều (13h-17h), ôn tập/review vào tối (19h-21h)
-4. duration phải THỰC TẾ: đọc tài liệu 30-60p, viết báo cáo 60-120p, họp/gọi điện 30-60p, nghiên cứu 45-90p
-5. pri: high = deadline gấp hoặc quan trọng nhất, med = bình thường, low = có thể để sau
-6. cat: work=công việc/học tập chuyên môn, study=học/nghiên cứu, personal=việc cá nhân/gia đình, health=sức khỏe/thể dục, other=khác
-7. note: giải thích ngắn TẠI SAO task này quan trọng + gợi ý cách làm hiệu quả (dùng **bold** cho điểm quan trọng)
+  const systemPrompt = `Bạn là chuyên gia lập kế hoạch cá nhân và quản lý thời gian. 
+Nhiệm vụ: tạo kế hoạch CHI TIẾT, THỰC TẾ, CÓ LỘ TRÌNH RÕ RÀNG cho mục tiêu của người dùng.
 
-Trả về JSON hợp lệ, KHÔNG thêm text hay markdown bên ngoài JSON:
-{"tasks":[{"title":"Động từ + hành động cụ thể","time":"HH:MM","duration":60,"cat":"work|personal|health|study|other","pri":"high|med|low","note":"Lý do quan trọng và tip thực hiện"}]}`;
+NGUYÊN TẮC LẬP KẾ HOẠCH:
+- Mỗi ngày có ${sc.tasksPerDay}-${sc.tasksPerDay+1} task, TĂNG DẦN độ khó theo tuần
+- Ngày đầu: task nhẹ, làm quen, xây nền tảng
+- Giữa kỳ: task chính, tập trung thực hiện
+- Cuối kỳ: task đánh giá, duy trì, cải thiện
+- Tên task BẮT ĐẦU BẰNG ĐỘNG TỪ cụ thể (Tập, Đọc, Viết, Thực hành, Đo, Lên thực đơn...)
+- note: giải thích lý do + cách thực hiện hiệu quả (dùng **bold**)
+- Phân bổ giờ hợp lý trong ngày (6h-22h)
+- duration thực tế theo loại task
 
-  const userMsg = `Mục tiêu/dự án: ${prompt}
-Ngày thực hiện: ${startDate}
-Hãy tạo kế hoạch task chi tiết, thực tế và có thể hoàn thành trong ngày này.`;
+ĐỊNH DẠNG JSON (KHÔNG thêm text ngoài JSON):
+{
+  "plan_summary": "Mô tả tổng quan kế hoạch 1-2 câu",
+  "tasks": [
+    {
+      "title": "Động từ + hành động cụ thể",
+      "date": "YYYY-MM-DD",
+      "time": "HH:MM",
+      "duration": 45,
+      "cat": "work|personal|health|study|other",
+      "pri": "high|med|low",
+      "note": "Lý do và cách thực hiện"
+    }
+  ]
+}`;
+
+  const userMsg = `Mục tiêu: ${prompt}
+Thời gian: ${sc.label} (từ ${startDate})
+Danh sách ngày cần lên kế hoạch: ${dates.join(', ')}
+Tổng số task tối đa: ${sc.days * (sc.tasksPerDay + 1)}
+
+Hãy tạo kế hoạch có lộ trình tăng dần, thực tế và khả thi.`;
 
   try {
     const res = await fetch('https://timeflow.xzcomdiem.workers.dev', {
@@ -3740,7 +3803,7 @@ Hãy tạo kế hoạch task chi tiết, thực tế và có thể hoàn thành 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 2000,
+        max_tokens: 4000,
         system: systemPrompt,
         messages: [{ role: 'user', content: userMsg }]
       })
@@ -3752,29 +3815,41 @@ Hãy tạo kế hoạch task chi tiết, thực tế và có thể hoàn thành 
     if (!data.content?.length) throw new Error('Phản hồi rỗng');
 
     const raw = data.content.map(b => b.text || '').join('').trim();
-    // Tìm JSON trong response dù có text thừa
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Không tìm thấy JSON trong phản hồi');
+    if (!jsonMatch) throw new Error('Không tìm thấy JSON');
     const parsed = JSON.parse(jsonMatch[0]);
     if (!parsed.tasks?.length) throw new Error('Danh sách task trống');
 
     aiSuggestedTasks = parsed.tasks.map((t, i) => ({
       ...t,
-      date: startDate,
       rec: 'none',
       done: false,
-      id: Date.now() + i * 7,
+      id: Date.now() + i * 13,
       ts: Date.now()
     }));
 
+    // Hiển thị summary
+    const sumEl = document.getElementById('aiResultSummary');
+    const totalMin = aiSuggestedTasks.reduce((s,t) => s+(t.duration||0), 0);
+    const totalH = Math.floor(totalMin/60);
+    sumEl.innerHTML = `
+      <div style="font-weight:700;color:var(--text);margin-bottom:4px">
+        📋 ${parsed.plan_summary || 'Kế hoạch ' + sc.label}
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">
+        <span>📅 <strong style="color:var(--accent)">${sc.label}</strong></span>
+        <span>✅ <strong style="color:var(--green)">${aiSuggestedTasks.length} task</strong></span>
+        <span>⏱ <strong style="color:var(--purple)">${totalH}h${totalMin%60>0?' '+totalMin%60+'p':''}</strong> tổng thời gian</span>
+      </div>`;
+
     renderAIResults();
     document.getElementById('aiResultWrap').style.display = 'block';
-    showToast(`✨ AI đề xuất ${aiSuggestedTasks.length} task!`);
+    showToast(`✨ Đã tạo ${aiSuggestedTasks.length} task cho ${sc.label}!`);
 
   } catch (e) {
-    const errEl = document.getElementById('aiError');
-    errEl.textContent = '❌ Lỗi: ' + (e.message || 'Không thể kết nối AI. Kiểm tra mạng và thử lại.');
-    errEl.style.display = 'block';
+    document.getElementById('aiError').textContent =
+      '❌ Lỗi: ' + (e.message || 'Không thể kết nối AI.');
+    document.getElementById('aiError').style.display = 'block';
     console.error('AI Error:', e);
   } finally {
     document.getElementById('aiLoading').style.display = 'none';
@@ -3795,56 +3870,80 @@ function renderAIResults() {
   const priColors = { high:'var(--red)', med:'var(--yellow)', low:'var(--green)' };
 
   list.innerHTML = '';
-  aiSuggestedTasks.forEach((t, i) => {
-    const div = document.createElement('div');
-    div.style.cssText = `background:var(--bg3);border:1px solid var(--border);
-      border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;
-      display:flex;gap:10px;align-items:flex-start;
-      border-left:3px solid ${catColors[t.cat]||'var(--accent)'}`;
-    div.innerHTML = `
-      <input type="checkbox" checked
-        style="margin-top:4px;accent-color:var(--accent);width:16px;height:16px;flex-shrink:0;cursor:pointer"
-        id="aiChk_${i}">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;line-height:1.4">
-          ${escHtml(t.title)}
-        </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
-          <span style="font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace;
-            background:var(--surface2);padding:2px 7px;border-radius:6px">
-            ⏰ ${t.time}
-          </span>
-          <span style="font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace;
-            background:var(--surface2);padding:2px 7px;border-radius:6px">
-            ⏱ ${t.duration} phút
-          </span>
-          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
-            background:${catColors[t.cat]||'var(--accent)'}22;color:${catColors[t.cat]||'var(--accent)'}">
-            ${catLabels[t.cat]||t.cat}
-          </span>
-          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
-            background:${priColors[t.pri]}22;color:${priColors[t.pri]}">
-            ${priLabel[t.pri]||t.pri}
-          </span>
-        </div>
-        ${t.note ? `<div style="font-size:12px;color:var(--text2);line-height:1.6;
-          background:var(--surface2);border-radius:8px;padding:8px 10px;margin-top:4px">
-          ${(()=>{try{return marked.parse(t.note)}catch(e){return escHtml(t.note)}})()}
-        </div>` : ''}
-      </div>`;
-    list.appendChild(div);
+
+  // Nhóm task theo ngày
+  const byDate = {};
+  aiSuggestedTasks.forEach(t => {
+    if (!byDate[t.date]) byDate[t.date] = [];
+    byDate[t.date].push(t);
   });
 
-  // Thêm tổng kết thời gian
-  const totalMin = aiSuggestedTasks.reduce((s, t) => s + (t.duration||0), 0);
-  const totalH = Math.floor(totalMin/60);
-  const totalM = totalMin%60;
-  const summary = document.createElement('div');
-  summary.style.cssText = `text-align:center;padding:10px;font-size:12px;
-    color:var(--text3);border-top:1px solid var(--border);margin-top:4px`;
-  summary.innerHTML = `📊 Tổng: <strong style="color:var(--accent)">${aiSuggestedTasks.length} task</strong>
-    · <strong style="color:var(--purple)">${totalH > 0 ? totalH+'h ' : ''}${totalM}p</strong> làm việc`;
-  list.appendChild(summary);
+  const dayNames = ['CN','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'];
+  let taskIndex = 0;
+
+  Object.keys(byDate).sort().forEach(date => {
+    const dayTasks = byDate[date];
+    const d = new Date(date + 'T00:00:00');
+    const dayName = dayNames[d.getDay()];
+    const dateLabel = `${dayName}, ${d.getDate()}/${d.getMonth()+1}`;
+
+    // Header ngày
+    const dayHeader = document.createElement('div');
+    dayHeader.style.cssText = `display:flex;align-items:center;gap:8px;
+      margin:12px 0 6px;padding:6px 10px;
+      background:var(--surface2);border-radius:8px;
+      font-size:12px;font-weight:700;color:var(--text2)`;
+    dayHeader.innerHTML = `📅 ${dateLabel}
+      <span style="margin-left:auto;font-size:10px;color:var(--text3);font-weight:400">
+        ${dayTasks.length} task
+      </span>`;
+    list.appendChild(dayHeader);
+
+    // Task cards
+    dayTasks.forEach(t => {
+      const i = taskIndex++;
+      const div = document.createElement('div');
+      div.style.cssText = `background:var(--bg3);border:1px solid var(--border);
+        border-radius:var(--radius);padding:11px 13px;margin-bottom:7px;
+        display:flex;gap:10px;align-items:flex-start;
+        border-left:3px solid ${catColors[t.cat]||'var(--accent)'}`;
+      div.innerHTML = `
+        <input type="checkbox" checked
+          style="margin-top:3px;accent-color:var(--accent);
+            width:16px;height:16px;flex-shrink:0;cursor:pointer"
+          id="aiChk_${i}">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:var(--text);
+            margin-bottom:5px;line-height:1.4">
+            ${escHtml(t.title)}
+          </div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:5px">
+            <span style="font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace;
+              background:var(--surface2);padding:2px 6px;border-radius:5px">
+              ⏰ ${t.time}
+            </span>
+            <span style="font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace;
+              background:var(--surface2);padding:2px 6px;border-radius:5px">
+              ⏱ ${t.duration}p
+            </span>
+            <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;
+              background:${catColors[t.cat]||'var(--accent)'}22;
+              color:${catColors[t.cat]||'var(--accent)'}">
+              ${catLabels[t.cat]||t.cat}
+            </span>
+            <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;
+              background:${priColors[t.pri]}22;color:${priColors[t.pri]}">
+              ${priLabel[t.pri]||t.pri}
+            </span>
+          </div>
+          ${t.note ? `<div style="font-size:11px;color:var(--text2);line-height:1.6;
+            background:var(--surface2);border-radius:6px;padding:7px 9px">
+            ${(()=>{try{return marked.parse(t.note)}catch(e){return escHtml(t.note)}})()}
+          </div>` : ''}
+        </div>`;
+      list.appendChild(div);
+    });
+  });
 }
 
 function addAllAITasks() {
