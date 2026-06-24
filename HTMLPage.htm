@@ -895,13 +895,17 @@ body::before {
             <div class="sec-title">Tất cả task hôm nay</div>
             <div class="sec-count" id="todayCount">0</div>
         </div>
-        <div id="filterRow" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;padding:0 0 4px">
-    <button class="rec-opt sel" data-filter="all" onclick="setFilter(this)">Tất cả</button>
-    <button class="rec-opt" data-filter="high" onclick="setFilter(this)">🔴 Cao</button>
-    <button class="rec-opt" data-filter="med" onclick="setFilter(this)">🟡 Vừa</button>
-    <button class="rec-opt" data-filter="low" onclick="setFilter(this)">🟢 Thấp</button>
-    <button class="rec-opt" data-filter="done" onclick="setFilter(this)">✅ Xong</button>
-    <button class="rec-opt" data-filter="undone" onclick="setFilter(this)">⏳ Chưa</button>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;padding:0 0 4px;align-items:center">
+    <div id="filterRow" style="display:flex;gap:5px;flex-wrap:wrap;flex:1">
+        <button class="rec-opt sel" data-filter="all" onclick="setFilter(this)">Tất cả</button>
+        <button class="rec-opt" data-filter="high" onclick="setFilter(this)">🔴 Cao</button>
+        <button class="rec-opt" data-filter="med" onclick="setFilter(this)">🟡 Vừa</button>
+        <button class="rec-opt" data-filter="low" onclick="setFilter(this)">🟢 Thấp</button>
+        <button class="rec-opt" data-filter="done" onclick="setFilter(this)">✅ Xong</button>
+        <button class="rec-opt" data-filter="undone" onclick="setFilter(this)">⏳ Chưa</button>
+    </div>
+    <button class="rec-opt" onclick="enterSelectionModeManual()" style="flex-shrink:0">☑️ Chọn</button>
+    <button class="rec-opt" onclick="openDeleteAll()" style="flex-shrink:0;border-color:var(--red);color:var(--red)">🗑️ Xóa tất</button>
 </div>
         <div class="swipe-hint">← Vuốt trái để xóa · Vuốt phải để hoàn thành →</div>
         <div id="todayList"></div>
@@ -3165,6 +3169,14 @@ function askDelete(id) {
 }
 function closeConfirm() { document.getElementById('ovConfirm').classList.remove('open'); deleteTargetId = null; }
 function confirmDelete() {
+     if (deleteTargetId === '__ALL__') {
+        const count = tasks.length;
+        tasks = [];
+        save(); closeConfirm(); renderCurrent();
+        if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
+        showToast('🗑️ Đã xóa tất cả ' + count + ' task!', 'warning');
+        return;
+    }
     if (deleteTargetId !== null) {
         const deletedTask = tasks.find(x => x.id === deleteTargetId);
         tasks = tasks.filter(x => x.id !== deleteTargetId);
@@ -4140,6 +4152,18 @@ function dismissOnboarding() {
         document.getElementById('onboardingOverlay').remove();
     }
 })();
+function openDeleteAll() {
+    if (!tasks.length) { showToast('Không có task nào để xóa!', 'warning'); return; }
+    deleteTargetId = '__ALL__';
+    document.getElementById('confirmText').textContent =
+        'Xóa toàn bộ ' + tasks.length + ' task? Không thể hoàn tác!';
+    document.getElementById('ovConfirm').classList.add('open');
+}
+
+function enterSelectionModeManual() {
+    enterSelectionMode();
+    showToast('☑️ Nhấn vào task để chọn');
+}
 generateRecurringTasks();
 if ('serviceWorker' in navigator) {
 navigator.serviceWorker.register('./sw.js');
