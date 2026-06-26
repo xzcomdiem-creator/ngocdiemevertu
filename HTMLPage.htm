@@ -1803,7 +1803,6 @@ function _sbScheduleSync() {
 
 
 
-// ─── RECURRING TASK GENERATOR ────────────────────────────────────────────────
 function generateRecurringTasks() {
     const today = todayStr();
     const now = new Date();
@@ -1811,14 +1810,15 @@ function generateRecurringTasks() {
     const dayOfMonth = now.getDate();
     let added = 0;
 
-   const recMap = {};
-tasks.forEach(t => {
-    if (!t.rec || t.rec === 'none') return;
-    const key = t.rec + '|' + t.title + '|' + t.cat;
-    if (!recMap[key] || t.ts > recMap[key].ts) recMap[key] = t;
-});
+    // Lấy template mới nhất của mỗi loại task lặp
+    const recMap = {};
+    tasks.forEach(t => {
+        if (!t.rec || t.rec === 'none') return;
+        const key = t.rec + '|' + t.title.trim().toLowerCase() + '|' + t.cat;
+        if (!recMap[key] || t.ts > recMap[key].ts) recMap[key] = t;
+    });
 
-Object.values(recMap).forEach(tmpl => {
+    Object.values(recMap).forEach(tmpl => {
         let shouldFire = false;
         if (tmpl.rec === 'daily') {
             shouldFire = true;
@@ -1831,16 +1831,17 @@ Object.values(recMap).forEach(tmpl => {
         }
         if (!shouldFire) return;
 
+        // Kiểm tra kỹ hơn — so sánh title lowercase và cùng ngày
         const exists = tasks.some(t =>
             t.date === today &&
-            t.title === tmpl.title &&
+            t.title.trim().toLowerCase() === tmpl.title.trim().toLowerCase() &&
             t.cat === tmpl.cat &&
             t.rec === tmpl.rec
         );
         if (exists) return;
 
         tasks.push({
-            id: Date.now() + Math.floor(Math.random() * 10000),
+            id: Date.now() + Math.floor(Math.random() * 99999),
             title: tmpl.title,
             note: tmpl.note || '',
             date: today,
@@ -1851,12 +1852,14 @@ Object.values(recMap).forEach(tmpl => {
             pri: tmpl.pri,
             rec: tmpl.rec,
             done: false,
-            ts: Date.now()
+            ts: Date.now(),
+            subtasks: tmpl.subtasks || [],
+            color: tmpl.color || ''
         });
         added++;
     });
 
-    if (added > 0) save();
+    if (added > 0) { save(); showToast('🔁 Đã tạo ' + added + ' task lặp lại!'); }
 }
 
 function save() { localStorage.setItem('tf_tasks', JSON.stringify(tasks)); _sbScheduleSync(); }
