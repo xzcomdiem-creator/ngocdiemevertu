@@ -4399,72 +4399,51 @@ function emptyTrash() {
     renderTrashList();
     showToast('🗑️ Đã dọn sạch thùng rác', 'warning');
 }
+
+// ─── WEB PUSH ────────────────────────────────────────────────────────────────
+const VAPID_PUBLIC_KEY='BHHrvlPj8g6dt_AbqhiNSB6-h-g3E5y_OPDQEPG3AD505_iwe4aqLn9aFXeUwl9Lbmoc_diANnEYHOTMS09zJ5g';
+function urlBase64ToUint8Array(b){const p='='.repeat((4-b.length%4)%4);const r=atob((b+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from([...r].map(c=>c.charCodeAt(0)));}
+async function registerWebPush(){if(!('serviceWorker'in navigator)||!('PushManager'in window))return null;try{const reg=await navigator.serviceWorker.ready;let sub=await reg.pushManager.getSubscription();if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)});await savePushSub(sub);return sub;}catch(e){console.warn('Push:',e);return null;}}
+async function savePushSub(sub){if(!_sbUserId)return;const j=sub.toJSON();await _sbc.from('push_subscriptions').upsert({uid:_sbUserId,endpoint:j.endpoint,p256dh:j.keys?.p256dh,auth:j.keys?.auth,updated_at:new Date().toISOString()},{onConflict:'uid'}).catch(console.warn);}
+async function syncTasksToServer(){if(!_sbUserId)return;const tt=getTodayTasks().filter(t=>!t.done&&t.time);if(!tt.length)return;await _sbc.from('scheduled_tasks').upsert(tt.map(t=>({uid:_sbUserId,task_id:t.id,task_title:t.title,task_time:t.time,task_date:t.date,notified:false,updated_at:new Date().toISOString()})),{onConflict:'uid,task_id'}).catch(console.warn);}
+async function toggleWebPush(){if(!('Notification'in window)){showToast('Không hỗ trợ thông báo','warning');return;}if(Notification.permission==='denied'){showToast('Thông báo bị chặn — vào Settings trình duyệt để bật','warning');return;}if(Notification.permission==='default'){const r=await Notification.requestPermission();if(r!=='granted'){showToast('Chưa cấp quyền','warning');updateNotifBtn();return;}}const sub=await registerWebPush();if(sub){notifPermission='granted';showToast('🔔 Đã bật — hoạt động cả khi tắt tab!');updateNotifBtn();await syncTasksToServer();}}
+if('serviceWorker'in navigator){navigator.serviceWorker.addEventListener('message',e=>{const{type,taskId}=e.data||{};if(type==='COMPLETE_TASK'&&taskId){toggleDone(taskId);showToast('✅ Hoàn thành từ notification!');}if(type==='SNOOZE_TASK'&&taskId){showToast('💤 Nhắc lại sau 5 phút');setTimeout(()=>{const t=tasks.find(x=>x.id===taskId);if(t&&!t.done)showToast(`🔔 ${t.title}`,'warning');},5*60*1000);}if(type==='SYNC_NOW')_sbSyncToCloud();});}
+(async function initWebPush(){if(!('serviceWorker'in navigator))return;await navigator.serviceWorker.ready;if(Notification.permission==='granted'){await registerWebPush();setTimeout(syncTasksToServer,3000);}})();
+window.toggleNotifPermission=toggleWebPush;
+const _origSave2=window.save;window.save=function(){_origSave2();setTimeout(syncTasksToServer,1000);};
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
 generateRecurringTasks();
 if ('serviceWorker' in navigator) {
-navigator.serviceWorker.register('./sw.js');
+    navigator.serviceWorker.register('./sw.js');
 }
 updateNotifBtn();
 updateXPToggleBtn();
 renderRingtoneRow();
 renderToday();
-// ─── OFFLINE INDICATOR ───────────────────────────────────────────────────────
+
 window.addEventListener('offline', () => showToast('📴 Đang offline — dữ liệu lưu cục bộ', 'warning'));
 window.addEventListener('online',  () => { showToast('🌐 Đã có mạng — đang đồng bộ...'); _sbSyncToCloud(); });
 
-// ─── ĐÓNG MENU KHI SCROLL ────────────────────────────────────────────────────
 document.querySelector('.screens').addEventListener('scroll', () => {
-document.getElementById('moreMenu').classList.remove('open');
+    document.getElementById('moreMenu').classList.remove('open');
 }, { passive: true });
-
 document.querySelectorAll('.screen').forEach(s => {
     s.addEventListener('scroll', () => {
         document.getElementById('moreMenu').classList.remove('open');
     }, { passive: true });
 });
-    // ─── PULL TO REFRESH ─────────────────────────────────────────────────────────
+
 (function initPullToRefresh() {
-    let startY = 0;
-    let isPulling = false;
+    let startY = 0, isPulling = false;
     const indicator = document.createElement('div');
-    indicator.style.cssText = `
-        position:fixed; top:54px; left:50%; transform:translateX(-50%) translateY(-60px);
-        background:var(--accent); color:#fff; border-radius:20px; padding:6px 16px;
-        font-size:12px; font-weight:700; z-index:500; transition:transform .25s;
-        pointer-events:none; opacity:0;
-    `;
+    indicator.style.cssText = 'position:fixed;top:54px;left:50%;transform:translateX(-50%) translateY(-60px);background:var(--accent);color:#fff;border-radius:20px;padding:6px 16px;font-size:12px;font-weight:700;z-index:500;transition:transform .25s;pointer-events:none;opacity:0';
     indicator.textContent = '↓ Kéo để làm mới';
     document.body.appendChild(indicator);
-
     document.querySelectorAll('.screen').forEach(screen => {
-        screen.addEventListener('touchstart', e => {
-            if (screen.scrollTop === 0) {
-                startY = e.touches[0].clientY;
-                isPulling = true;
-            }
-        }, { passive: true });
-
-        screen.addEventListener('touchmove', e => {
-            if (!isPulling) return;
-            const dy = e.touches[0].clientY - startY;
-            if (dy > 10 && screen.scrollTop === 0) {
-                indicator.style.opacity = Math.min(dy / 80, 1);
-                indicator.style.transform = `translateX(-50%) translateY(${Math.min(dy/3, 20)}px)`;
-                indicator.textContent = dy > 60 ? '↑ Thả để làm mới' : '↓ Kéo để làm mới';
-            }
-        }, { passive: true });
-
-        screen.addEventListener('touchend', e => {
-            if (!isPulling) return;
-            const dy = e.changedTouches[0].clientY - startY;
-            if (dy > 60 && screen.scrollTop === 0) {
-                renderCurrent();
-                showToast('🔄 Đã làm mới!');
-                if (navigator.vibrate) navigator.vibrate(15);
-            }
-            indicator.style.opacity = 0;
-            indicator.style.transform = 'translateX(-50%) translateY(-60px)';
-            isPulling = false;
-        });
+        screen.addEventListener('touchstart', e => { if (screen.scrollTop === 0) { startY = e.touches[0].clientY; isPulling = true; } }, { passive: true });
+        screen.addEventListener('touchmove', e => { if (!isPulling) return; const dy = e.touches[0].clientY - startY; if (dy > 10 && screen.scrollTop === 0) { indicator.style.opacity = Math.min(dy/80,1); indicator.style.transform = `translateX(-50%) translateY(${Math.min(dy/3,20)}px)`; indicator.textContent = dy > 60 ? '↑ Thả để làm mới' : '↓ Kéo để làm mới'; } }, { passive: true });
+        screen.addEventListener('touchend', e => { if (!isPulling) return; const dy = e.changedTouches[0].clientY - startY; if (dy > 60 && screen.scrollTop === 0) { renderCurrent(); showToast('🔄 Đã làm mới!'); if (navigator.vibrate) navigator.vibrate(15); } indicator.style.opacity = 0; indicator.style.transform = 'translateX(-50%) translateY(-60px)'; isPulling = false; });
     });
 })();
 
