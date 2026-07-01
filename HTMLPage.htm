@@ -4010,15 +4010,30 @@ ${planningInstruction}`;
         messages: [{ role: 'user', content: userMsg }]
       })
     });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      throw new Error('HTTP ' + res.status + (errText ? ' — ' + errText.substring(0,150) : ''));
+    }
     const data = await res.json();
     if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-    if (!data.content?.length) throw new Error('Phản hồi rỗng');
+    if (!data.content?.length) throw new Error('Phản hồi rỗng — Worker không trả về content');
 
-    const raw = data.content.map(b => b.text || '').join('').trim();
+    let raw = data.content.map(b => b.text || '').join('').trim();
+    // Dọn markdown code fence nếu Claude bọc JSON trong ```json ... ```
+    raw = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Không tìm thấy JSON');
-    const parsed = JSON.parse(jsonMatch[0]);
+    if (!jsonMatch) {
+      console.error('RAW AI RESPONSE:', raw);
+      throw new Error('Không tìm thấy JSON. Phản hồi thô: ' + (raw.substring(0,200) || '(rỗng)'));
+    }
+    let parsed;
+    try {
+      parsed = JSON.parse(jsonMatch[0]);
+    } catch (parseErr) {
+      console.error('RAW AI RESPONSE:', raw);
+      throw new Error('JSON lỗi cú pháp (có thể bị cắt do quá dài): ' + parseErr.message);
+    }
     if (!parsed.tasks?.length) throw new Error('Danh sách task trống');
 
     aiSuggestedTasks = parsed.tasks.map((t, i) => ({
