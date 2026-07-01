@@ -1803,6 +1803,7 @@ function _sbScheduleSync() {
 
 
 
+// ─── RECURRING TASK GENERATOR ────────────────────────────────────────────────
 function generateRecurringTasks() {
     const today = todayStr();
     const now = new Date();
@@ -1810,15 +1811,14 @@ function generateRecurringTasks() {
     const dayOfMonth = now.getDate();
     let added = 0;
 
-    // Lấy template mới nhất của mỗi loại task lặp
-    const recMap = {};
-    tasks.forEach(t => {
-        if (!t.rec || t.rec === 'none') return;
-        const key = t.rec + '|' + t.title.trim().toLowerCase() + '|' + t.cat;
-        if (!recMap[key] || t.ts > recMap[key].ts) recMap[key] = t;
-    });
+   const recMap = {};
+tasks.forEach(t => {
+    if (!t.rec || t.rec === 'none') return;
+    const key = t.rec + '|' + t.title + '|' + t.cat;
+    if (!recMap[key] || t.ts > recMap[key].ts) recMap[key] = t;
+});
 
-    Object.values(recMap).forEach(tmpl => {
+Object.values(recMap).forEach(tmpl => {
         let shouldFire = false;
         if (tmpl.rec === 'daily') {
             shouldFire = true;
@@ -1831,17 +1831,16 @@ function generateRecurringTasks() {
         }
         if (!shouldFire) return;
 
-        // Kiểm tra kỹ hơn — so sánh title lowercase và cùng ngày
         const exists = tasks.some(t =>
             t.date === today &&
-            t.title.trim().toLowerCase() === tmpl.title.trim().toLowerCase() &&
+            t.title === tmpl.title &&
             t.cat === tmpl.cat &&
             t.rec === tmpl.rec
         );
         if (exists) return;
 
         tasks.push({
-            id: Date.now() + Math.floor(Math.random() * 99999),
+            id: Date.now() + Math.floor(Math.random() * 10000),
             title: tmpl.title,
             note: tmpl.note || '',
             date: today,
@@ -1852,14 +1851,12 @@ function generateRecurringTasks() {
             pri: tmpl.pri,
             rec: tmpl.rec,
             done: false,
-            ts: Date.now(),
-            subtasks: tmpl.subtasks || [],
-            color: tmpl.color || ''
+            ts: Date.now()
         });
         added++;
     });
 
-    if (added > 0) { save(); showToast('🔁 Đã tạo ' + added + ' task lặp lại!'); }
+    if (added > 0) save();
 }
 
 function save() { localStorage.setItem('tf_tasks', JSON.stringify(tasks)); _sbScheduleSync(); }
@@ -4010,30 +4007,15 @@ ${planningInstruction}`;
         messages: [{ role: 'user', content: userMsg }]
       })
     });
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '');
-      throw new Error('HTTP ' + res.status + (errText ? ' — ' + errText.substring(0,150) : ''));
-    }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-    if (!data.content?.length) throw new Error('Phản hồi rỗng — Worker không trả về content');
+    if (!data.content?.length) throw new Error('Phản hồi rỗng');
 
-    let raw = data.content.map(b => b.text || '').join('').trim();
-    // Dọn markdown code fence nếu Claude bọc JSON trong ```json ... ```
-    raw = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-
+    const raw = data.content.map(b => b.text || '').join('').trim();
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error('RAW AI RESPONSE:', raw);
-      throw new Error('Không tìm thấy JSON. Phản hồi thô: ' + (raw.substring(0,200) || '(rỗng)'));
-    }
-    let parsed;
-    try {
-      parsed = JSON.parse(jsonMatch[0]);
-    } catch (parseErr) {
-      console.error('RAW AI RESPONSE:', raw);
-      throw new Error('JSON lỗi cú pháp (có thể bị cắt do quá dài): ' + parseErr.message);
-    }
+    if (!jsonMatch) throw new Error('Không tìm thấy JSON');
+    const parsed = JSON.parse(jsonMatch[0]);
     if (!parsed.tasks?.length) throw new Error('Danh sách task trống');
 
     aiSuggestedTasks = parsed.tasks.map((t, i) => ({
